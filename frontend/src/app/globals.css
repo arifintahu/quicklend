@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  /* Deep Cosmos Palette */
+  --color-background: #05050A; /* Dark Indigo-Black */
+  --color-surface: rgba(255, 255, 255, 0.03);
+  
+  /* Gradients defined as solid fallbacks, handled in classes */
+  --color-primary: #00C6FF; 
+  --color-secondary: #42e695;
+  --color-warning: #FFB800;
+  --color-danger: #FF4B4B;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
+}
+
+/* Base Styles */
+body {
+  background-color: var(--color-background);
+  color: #f8fafc;
+  font-family: var(--font-sans);
+  overflow-x: hidden; /* Prevent scrollbar from ambient orbs */
+}
+
+/* Authentic Glassmorphism Utilities */
+.glass-panel {
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Stronger glass for modals/active elements */
+.glass-panel-strong {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-input {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+
+.glass-input:focus {
+  border-color: rgba(0, 198, 255, 0.5); /* Primary gradient start */
+  background: rgba(0, 0, 0, 0.4);
+  outline: none;
+  box-shadow: 0 0 15px rgba(0, 198, 255, 0.1);
+}
+
+/* Gradient Text Utility */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #00C6FF, #0072FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-success {
+  background: linear-gradient(135deg, #42e695, #3bb2b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
