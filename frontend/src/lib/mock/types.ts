@@ -14,6 +14,7 @@ export interface MarketData {
   ltv: number; // Loan to Value, e.g., 0.80
   liquidationThreshold: number; // e.g., 0.85
   price: number; // Mock price in USD
+  availableLiquidity: number; // Amount available to borrow
 }
 
 export interface UserPosition {
@@ -29,4 +30,5 @@ export interface HealthFactorData {
   totalDebtUSD: number;
   netAPY: number;
   borrowPowerUsed: number; // 0 to 1
+  liquidationPrice?: number; // Estimated liquidation price for the main collateral
 }

@@ -5,10 +5,11 @@ import { cn } from '@/lib/utils';
 
 interface HealthDialProps {
   healthFactor: number;
+  liquidationPrice?: number;
   className?: string;
 }
 
-export const HealthDial: React.FC<HealthDialProps> = ({ healthFactor, className }) => {
+export const HealthDial: React.FC<HealthDialProps> = ({ healthFactor, liquidationPrice, className }) => {
   // Map HF to Angle (-90 to 90)
   // Range: 0.8 to 4.0 visually
   // HF < 1.0 is Danger
@@ -48,6 +49,16 @@ export const HealthDial: React.FC<HealthDialProps> = ({ healthFactor, className 
             strokeWidth="12"
             strokeLinecap="round"
           />
+          {/* Safety Zone Marker (2.0 - 4.0) */}
+          <path
+            d="M 20 100 A 80 80 0 0 1 180 100"
+            fill="none"
+            stroke="rgba(66, 230, 149, 0.1)"
+            strokeWidth="20"
+            strokeDasharray="251"
+            strokeDashoffset={251 * (1 - (2.0 / MAX_HF))} // Start from 2.0
+            className="opacity-50"
+          />
           <path
             d="M 20 100 A 80 80 0 0 1 180 100"
             fill="none"
@@ -82,9 +93,20 @@ export const HealthDial: React.FC<HealthDialProps> = ({ healthFactor, className 
         >
           {healthFactor > 100 ? '∞' : healthFactor.toFixed(2)}
         </motion.div>
-        <div className="text-xs text-gray-500 mt-2 font-medium">
-            Liquidation at &lt; 1.0
-        </div>
+        
+        {liquidationPrice && (
+            <div className="mt-3 bg-red-500/10 border border-red-500/20 px-3 py-1 rounded-full inline-block">
+                <span className="text-xs text-red-400 font-medium">
+                    Liq. Price: <span className="font-mono font-bold">${liquidationPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                </span>
+            </div>
+        )}
+        
+        {!liquidationPrice && (
+             <div className="text-xs text-gray-500 mt-2 font-medium">
+                Liquidation at &lt; 1.0
+            </div>
+        )}
       </div>
     </GlassCard>
   );

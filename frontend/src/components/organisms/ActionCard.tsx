@@ -135,6 +135,19 @@ export const ActionCard: React.FC<ActionCardProps> = ({
                         )}
                     </div>
                 </div>
+                
+                {/* Liquidation Price Preview */}
+                {action === 'borrow' && (
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Liq. Price (Est.)</span>
+                        <div className="flex items-center gap-2 font-mono font-bold text-sm">
+                             <span className="text-gray-300">$1,850.00</span>
+                             <ArrowRight size={14} className="text-gray-500" />
+                             <span className="text-[#FF4B4B]">$2,100.00</span>
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-400">Projected APY</span>
                     <span className={action === 'supply' ? "text-[#42e695]" : "text-[#FFB800]"}>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Zap, LayoutDashboard, TrendingUp, Wallet, Settings } from 'lucide-react';
+import { Zap, LayoutDashboard, TrendingUp, Wallet, Settings, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const SidebarItem = ({ icon: Icon, label, active = false }: { icon: any, label: string, active?: boolean }) => {
@@ -50,6 +50,7 @@ export const Sidebar = () => {
         <SidebarItem icon={LayoutDashboard} label="Dashboard" active />
         <SidebarItem icon={TrendingUp} label="Markets" />
         <SidebarItem icon={Wallet} label="My Portfolio" />
+        <SidebarItem icon={History} label="History" />
         <SidebarItem icon={Settings} label="Settings" />
       </nav>
 
