@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
+import { Navbar } from '@/components/organisms/Navbar';
 import { HealthDial } from '@/components/organisms/HealthDial';
 import { AssetTable } from '@/components/organisms/AssetTable';
 import { ActionCard } from '@/components/organisms/ActionCard';
@@ -50,17 +51,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen text-white flex">
+    <>
       <Sidebar />
       
       <main className="flex-1 md:ml-64 p-6 md:p-12 overflow-y-auto">
-        <header className="flex justify-between items-center mb-8">
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-gray-400">Welcome back to QuickLend</p>
-            </div>
-            {/* Mobile Menu Toggle would go here */}
-        </header>
+        <Navbar />
 
         <LayoutGroup>
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
@@ -167,6 +162,6 @@ export default function Dashboard() {
             calculateProjectedHealthFactor={(amount, action) => calculateProjectedHF(amount, action, selectedAsset.asset)}
         />
       )}
-    </div>
+    </>
   );
 }
