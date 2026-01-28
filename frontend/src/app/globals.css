@@ -17,7 +17,8 @@
 
 /* Base Styles */
 body {
-  background-color: var(--color-background);
+  background: radial-gradient(circle at 50% 0%, #1a1d2d 0%, var(--color-background) 80%);
+  background-color: var(--color-background); /* Fallback */
   color: #f8fafc;
   font-family: var(--font-sans);
   overflow-x: hidden; /* Prevent scrollbar from ambient orbs */
