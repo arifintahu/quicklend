@@ -5,13 +5,17 @@ import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { GlassCard } from '@/components/atoms/GlassCard';
 import { Button } from '@/components/atoms/Button';
-import { useStore } from '@/store/useStore';
+import { useMarkets } from '@/hooks/useMarkets';
+import { useUserPositions } from '@/hooks/useUserPositions';
+import { useProtocolHealth } from '@/hooks/useProtocolHealth';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Coins, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function PortfolioPage() {
-  const { userPositions, markets, healthData } = useStore();
+  const { markets } = useMarkets();
+  const { userPositions } = useUserPositions();
+  const healthData = useProtocolHealth();
 
   // Filter Positions
   const suppliedAssets = userPositions.filter(p => p.suppliedAmount > 0);

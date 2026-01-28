@@ -7,14 +7,20 @@ import { HealthDial } from '@/components/organisms/HealthDial';
 import { AssetTable } from '@/components/organisms/AssetTable';
 import { ActionCard } from '@/components/organisms/ActionCard';
 import { GlassCard } from '@/components/atoms/GlassCard';
-import { useStore } from '@/store/useStore';
+import { useMarkets } from '@/hooks/useMarkets';
 import { MarketData, UserPosition } from '@/lib/mock/types';
+import { useUserPositions } from '@/hooks/useUserPositions';
+import { useProtocolHealth } from '@/hooks/useProtocolHealth';
+import { useLendingActions } from '@/hooks/useLendingActions';
 import { calculateHealthFactor } from '@/lib/mock/data';
 import { formatCurrency, formatPercentage, cn } from '@/lib/utils';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
 export default function Dashboard() {
-  const { markets, userPositions, healthData, supply, borrow } = useStore();
+  const { markets } = useMarkets();
+  const { userPositions } = useUserPositions();
+  const healthData = useProtocolHealth();
+  const { supply, borrow } = useLendingActions();
   const [selectedAsset, setSelectedAsset] = useState<{ asset: MarketData, action: 'supply' | 'borrow' } | null>(null);
 
   const handleAction = (amount: number, action: 'supply' | 'borrow') => {

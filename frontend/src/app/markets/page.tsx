@@ -5,13 +5,15 @@ import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { AssetTable } from '@/components/organisms/AssetTable';
 import { GlassCard } from '@/components/atoms/GlassCard';
-import { useStore } from '@/store/useStore';
+import { useMarkets } from '@/hooks/useMarkets';
+import { useUserPositions } from '@/hooks/useUserPositions';
 import { formatCurrency } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Search, Filter } from 'lucide-react';
 
 export default function MarketsPage() {
-  const { markets, userPositions } = useStore();
+  const { markets } = useMarkets();
+  const { userPositions } = useUserPositions();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Calculate Market Stats

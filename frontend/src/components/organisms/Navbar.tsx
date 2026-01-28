@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MOCK_NOTIFICATIONS } from '@/lib/mock/notifications';
 
+import { useWallet } from '@/hooks/useWallet';
+
 const timeAgo = (date: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     let interval = seconds / 31536000;
@@ -22,7 +24,7 @@ const timeAgo = (date: string) => {
 
 export const Navbar = () => {
   const pathname = usePathname();
-  const [isConnected, setIsConnected] = useState(true);
+  const { isConnected, address, connect, disconnect } = useWallet();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
@@ -41,11 +43,11 @@ export const Navbar = () => {
   };
 
   const handleConnect = () => {
-      setIsConnected(true);
+      connect();
   };
 
   const handleDisconnect = () => {
-      setIsConnected(false);
+      disconnect();
       setIsDropdownOpen(false);
   };
 
@@ -145,7 +147,7 @@ export const Navbar = () => {
                                 0x
                             </div>
                             <div className="text-left hidden md:block">
-                                <div className="text-sm font-bold text-white">0x12...34</div>
+                                <div className="text-sm font-bold text-white">{address}</div>
                                 <div className="text-[10px] text-gray-400">Ethereum</div>
                             </div>
                             <ChevronDown size={16} className="text-gray-400" />

@@ -3,6 +3,12 @@ import { MOCK_MARKETS, INITIAL_USER_POSITIONS, calculateHealthFactor } from '@/l
 import { MarketData, UserPosition, HealthFactorData } from '@/lib/mock/types';
 
 interface AppState {
+  // Wallet
+  isConnected: boolean;
+  address: string | null;
+  connectWallet: () => void;
+  disconnectWallet: () => void;
+
   markets: MarketData[];
   userPositions: UserPosition[];
   healthData: HealthFactorData;
@@ -16,6 +22,12 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set, get) => ({
+  // Wallet Initial State
+  isConnected: true, // Mocked as connected initially for demo
+  address: "0x12...34",
+  connectWallet: () => set({ isConnected: true, address: "0x12...34" }),
+  disconnectWallet: () => set({ isConnected: false, address: null }),
+
   markets: MOCK_MARKETS,
   userPositions: INITIAL_USER_POSITIONS,
   healthData: calculateHealthFactor(MOCK_MARKETS, INITIAL_USER_POSITIONS),
