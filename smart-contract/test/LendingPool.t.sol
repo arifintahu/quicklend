@@ -4,8 +4,8 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {LendingPool} from "../src/core/LendingPool.sol";
 import {InterestRateModel} from "../src/core/InterestRateModel.sol";
-import {MockPriceOracle} from "../src/core/MockPriceOracle.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {qToken} from "../src/tokens/qToken.sol";
 import {UiPoolDataProvider} from "../src/periphery/UiPoolDataProvider.sol";
 
