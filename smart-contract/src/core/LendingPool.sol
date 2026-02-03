@@ -35,6 +35,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     // State Variables
     mapping(address => Market) public markets; // asset -> Market
     mapping(address => mapping(address => uint256)) public userBorrowShares; // asset -> user -> scaled debt
+    mapping(address => mapping(address => bool)) public userCollateralEnabled; // asset -> user -> isCollateral
     address[] public marketList; // List of all assets
     
     IPriceOracle public oracle;
@@ -46,6 +47,8 @@ contract LendingPool is ReentrancyGuard, Ownable {
     event Borrow(address indexed asset, address indexed user, uint256 amount);
     event Repay(address indexed asset, address indexed user, uint256 amount);
     event Liquidate(address indexed asset, address indexed user, uint256 amount, address liquidator);
+    event ReserveUsedAsCollateralEnabled(address indexed asset, address indexed user);
+    event ReserveUsedAsCollateralDisabled(address indexed asset, address indexed user);
 
     // Errors
     error MarketNotListed();
@@ -95,6 +98,28 @@ contract LendingPool is ReentrancyGuard, Ownable {
     // --- Core Interaction Functions ---
 
     /**
+     * @notice Sets the asset as collateral or not.
+     */
+    function setUserUseReserveAsCollateral(address asset, bool useAsCollateral) external nonReentrant {
+        Market storage market = markets[asset];
+        if (!market.isListed) revert MarketNotListed();
+
+        if (useAsCollateral == userCollateralEnabled[asset][msg.sender]) return;
+
+        userCollateralEnabled[asset][msg.sender] = useAsCollateral;
+
+        if (useAsCollateral) {
+            emit ReserveUsedAsCollateralEnabled(asset, msg.sender);
+        } else {
+            // Check if user is still healthy after disabling
+            if (getUserHealthFactor(msg.sender) < 1e18) {
+                revert HealthFactorTooLow();
+            }
+            emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
+        }
+    }
+
+    /**
      * @notice Supply assets to the pool and receive qTokens.
      */
     function supply(address asset, uint256 amount) external nonReentrant {
@@ -109,6 +134,12 @@ contract LendingPool is ReentrancyGuard, Ownable {
         
         market.totalSupplied += amount; 
         
+        // Auto-enable as collateral if first deposit (balance was 0)
+        if (market.qTokenAddress.balanceOf(msg.sender) == 0 && !userCollateralEnabled[asset][msg.sender]) {
+            userCollateralEnabled[asset][msg.sender] = true;
+            emit ReserveUsedAsCollateralEnabled(asset, msg.sender);
+        }
+
         // Mint qTokens
         market.qTokenAddress.mint(msg.sender, amount);
 
@@ -263,6 +294,10 @@ contract LendingPool is ReentrancyGuard, Ownable {
 
     // --- View Functions ---
 
+    function getMarketList() external view returns (address[] memory) {
+        return marketList;
+    }
+
     function getUserHealthFactor(address user) public view returns (uint256) {
         return _calculateHealth(user, false); // False = Use Liquidation Threshold
     }
@@ -277,7 +312,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
 
             // Collateral Value
             uint256 collateralBalance = market.qTokenAddress.balanceOf(user);
-            if (collateralBalance > 0) {
+            if (collateralBalance > 0 && userCollateralEnabled[asset][user]) {
                 uint256 price = oracle.getAssetPrice(asset); // USD price 1e18
                 uint256 value = collateralBalance.mulWad(price);
                 

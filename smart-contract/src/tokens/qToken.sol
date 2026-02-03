@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -11,6 +12,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  */
 contract qToken is ERC20, Ownable {
     address public immutable UNDERLYING_ASSET;
+    uint8 private _decimals;
 
     /**
      * @param name Token Name (e.g., "QuickLend USDC")
@@ -25,6 +27,15 @@ contract qToken is ERC20, Ownable {
         address _lendingPool
     ) ERC20(name, symbol) Ownable(_lendingPool) {
         UNDERLYING_ASSET = _underlyingAsset;
+        try IERC20Metadata(_underlyingAsset).decimals() returns (uint8 d) {
+            _decimals = d;
+        } catch {
+            _decimals = 18; // Default to 18 if call fails
+        }
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return _decimals;
     }
 
     /**

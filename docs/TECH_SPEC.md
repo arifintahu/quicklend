@@ -10,6 +10,7 @@ QuickLend is built on a modular, smart contract architecture with the following 
 | **qToken.sol** | Yield Asset | EIP-20 token representing pool share; balance increases via interest. |
 | **PriceOracle.sol** | Data Feed | Connects to Chainlink for real-time valuation of collateral and debt. |
 | **InterestRateModel.sol** | Logic | Stateless contract calculating  and  per market state. |
+| **UiPoolDataProvider.sol** | Helper | View-only contract to aggregate market and user data for the frontend. |
 
 ---
 
@@ -28,6 +29,14 @@ struct Market {
     uint256 totalBorrowed;       
 }
 
+```
+
+### 2.2 User Configuration
+
+Users can toggle specific assets as collateral to manage their risk. This allows isolating risk or preventing liquidation of specific assets.
+
+```solidity
+mapping(address => mapping(address => bool)) public userCollateralEnabled; // asset -> user -> isCollateral
 ```
 
 ---

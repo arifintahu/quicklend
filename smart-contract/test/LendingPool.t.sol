@@ -7,6 +7,7 @@ import {InterestRateModel} from "../src/core/InterestRateModel.sol";
 import {MockPriceOracle} from "../src/core/MockPriceOracle.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {qToken} from "../src/tokens/qToken.sol";
+import {UiPoolDataProvider} from "../src/periphery/UiPoolDataProvider.sol";
 
 contract LendingPoolTest is Test {
     LendingPool pool;
@@ -14,6 +15,7 @@ contract LendingPoolTest is Test {
     MockPriceOracle oracle;
     MockERC20 usdc;
     MockERC20 weth;
+    UiPoolDataProvider uiDataProvider;
 
     address user1 = address(1);
     address user2 = address(2);
@@ -22,9 +24,10 @@ contract LendingPoolTest is Test {
         irModel = new InterestRateModel();
         oracle = new MockPriceOracle();
         pool = new LendingPool(address(oracle));
+        uiDataProvider = new UiPoolDataProvider();
 
-        usdc = new MockERC20("USDC", "USDC");
-        weth = new MockERC20("WETH", "WETH");
+        usdc = new MockERC20("USDC", "USDC", 18);
+        weth = new MockERC20("WETH", "WETH", 18);
 
         // Init Markets
         pool.initMarket(address(usdc), address(irModel), 0.8e18, 0.85e18, 0.05e18, "qUSDC", "qUSDC");
@@ -123,5 +126,64 @@ contract LendingPoolTest is Test {
         (,,,,, qToken qUSDC,,,,) = pool.markets(address(usdc));
         assertEq(qToken(qUSDC).balanceOf(user2), 1500e18);
         vm.stopPrank();
+    }
+
+    function test_CollateralToggle() public {
+        // User 1 supplies USDC
+        vm.startPrank(user1);
+        pool.supply(address(usdc), 1000e18);
+        
+        // Should be enabled by default
+        assertTrue(pool.userCollateralEnabled(address(usdc), user1));
+        
+        // Disable Collateral
+        pool.setUserUseReserveAsCollateral(address(usdc), false);
+        assertFalse(pool.userCollateralEnabled(address(usdc), user1));
+        
+        // Try to borrow -> Should fail as 0 collateral
+        vm.expectRevert(LendingPool.HealthFactorTooLow.selector);
+        pool.borrow(address(weth), 0.1e18);
+        
+        // Re-enable
+        pool.setUserUseReserveAsCollateral(address(usdc), true);
+        assertTrue(pool.userCollateralEnabled(address(usdc), user1));
+        
+        // Borrow should work
+        pool.borrow(address(weth), 0.1e18);
+        
+        // Try to disable while borrowing -> Should fail
+        vm.expectRevert(LendingPool.HealthFactorTooLow.selector);
+        pool.setUserUseReserveAsCollateral(address(usdc), false);
+        
+        vm.stopPrank();
+    }
+
+    function test_qTokenDecimals() public {
+        // Deploy a 6 decimal token
+        MockERC20 usdt = new MockERC20("USDT", "USDT", 6);
+        pool.initMarket(address(usdt), address(irModel), 0.8e18, 0.85e18, 0.05e18, "qUSDT", "qUSDT");
+        
+        (,,,,, qToken qUSDT,,,,) = pool.markets(address(usdt));
+        assertEq(qToken(qUSDT).decimals(), 6);
+    }
+
+    function test_UiPoolDataProvider() public {
+        // Setup some state
+        vm.startPrank(user1);
+        pool.supply(address(usdc), 1000e18);
+        pool.borrow(address(weth), 0.1e18);
+        vm.stopPrank();
+
+        UiPoolDataProvider.AggregatedMarketData[] memory marketData = uiDataProvider.getMarketData(pool);
+        assertEq(marketData.length, 2);
+        
+        // Find USDC
+        uint256 usdcIndex = keccak256(abi.encodePacked(marketData[0].symbol)) == keccak256(abi.encodePacked("USDC")) ? 0 : 1;
+        assertEq(marketData[usdcIndex].totalSupplied, 1000e18);
+        
+        UiPoolDataProvider.UserPositionData[] memory userData = uiDataProvider.getUserData(pool, user1);
+        assertEq(userData.length, 2);
+        assertEq(userData[usdcIndex].suppliedBalance, 1000e18);
+        assertEq(userData[usdcIndex].isCollateral, true);
     }
 }
