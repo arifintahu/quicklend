@@ -5,12 +5,14 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
+import {IqToken} from "../interfaces/IqToken.sol";
+
 /**
  * @title qToken
  * @notice Yield-bearing token representing a user's share in the LendingPool.
  * @dev Controlled by the LendingPool contract (Owner).
  */
-contract qToken is ERC20, Ownable {
+contract qToken is ERC20, Ownable, IqToken {
     address public immutable UNDERLYING_ASSET;
     uint8 private _decimals;
 
@@ -34,33 +36,26 @@ contract qToken is ERC20, Ownable {
         }
     }
 
-    function decimals() public view virtual override returns (uint8) {
+    function decimals() public view virtual override(ERC20, IERC20Metadata) returns (uint8) {
         return _decimals;
     }
 
     /**
-     * @notice Mints qTokens to a user. Only callable by LendingPool.
-     * @param to The recipient address.
-     * @param amount The amount to mint.
+     * @inheritdoc IqToken
      */
     function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
 
     /**
-     * @notice Burns qTokens from a user. Only callable by LendingPool.
-     * @param from The address to burn from.
-     * @param amount The amount to burn.
+     * @inheritdoc IqToken
      */
     function burn(address from, uint256 amount) external onlyOwner {
         _burn(from, amount);
     }
 
     /**
-     * @notice Transfers qTokens during liquidation. Only callable by LendingPool.
-     * @param from The borrower address.
-     * @param to The liquidator address.
-     * @param amount The amount to transfer.
+     * @inheritdoc IqToken
      */
     function seize(address from, address to, uint256 amount) external onlyOwner {
         _transfer(from, to, amount);

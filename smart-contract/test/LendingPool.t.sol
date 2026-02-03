@@ -9,6 +9,8 @@ import {MockERC20} from "./mocks/MockERC20.sol";
 import {qToken} from "../src/tokens/qToken.sol";
 import {UiPoolDataProvider} from "../src/periphery/UiPoolDataProvider.sol";
 
+import {ILendingPool} from "../src/interfaces/ILendingPool.sol";
+
 contract LendingPoolTest is Test {
     LendingPool pool;
     InterestRateModel irModel;
@@ -79,7 +81,7 @@ contract LendingPoolTest is Test {
         assertEq(weth.balanceOf(user1), 1e18);
         
         // Try borrowing too much (another 1.1 WETH -> Total 2.1 WETH = $4200 > $4000)
-        vm.expectRevert(LendingPool.HealthFactorTooLow.selector);
+        vm.expectRevert(ILendingPool.HealthFactorTooLow.selector);
         pool.borrow(address(weth), 1.1e18);
         vm.stopPrank();
     }
@@ -141,7 +143,7 @@ contract LendingPoolTest is Test {
         assertFalse(pool.userCollateralEnabled(address(usdc), user1));
         
         // Try to borrow -> Should fail as 0 collateral
-        vm.expectRevert(LendingPool.HealthFactorTooLow.selector);
+        vm.expectRevert(ILendingPool.HealthFactorTooLow.selector);
         pool.borrow(address(weth), 0.1e18);
         
         // Re-enable
@@ -152,7 +154,7 @@ contract LendingPoolTest is Test {
         pool.borrow(address(weth), 0.1e18);
         
         // Try to disable while borrowing -> Should fail
-        vm.expectRevert(LendingPool.HealthFactorTooLow.selector);
+        vm.expectRevert(ILendingPool.HealthFactorTooLow.selector);
         pool.setUserUseReserveAsCollateral(address(usdc), false);
         
         vm.stopPrank();

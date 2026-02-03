@@ -10,32 +10,14 @@ import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 
 import {qToken} from "../tokens/qToken.sol";
 
-contract UiPoolDataProvider {
+import {IUiPoolDataProvider} from "../interfaces/IUiPoolDataProvider.sol";
+
+contract UiPoolDataProvider is IUiPoolDataProvider {
     using FixedPointMathLib for uint256;
 
-
-    struct AggregatedMarketData {
-        address asset;
-        string symbol;
-        uint8 decimals;
-        uint256 ltv;
-        uint256 liqThreshold;
-        uint256 supplyRate;
-        uint256 borrowRate;
-        uint256 totalSupplied;
-        uint256 totalBorrowed;
-        uint256 availableLiquidity;
-        uint256 priceUSD;
-    }
-
-    struct UserPositionData {
-        address asset;
-        string symbol;
-        uint256 suppliedBalance;
-        uint256 borrowedBalance;
-        bool isCollateral;
-    }
-
+    /**
+     * @inheritdoc IUiPoolDataProvider
+     */
     function getMarketData(LendingPool pool) external view returns (AggregatedMarketData[] memory) {
         address[] memory assets = pool.getMarketList();
         AggregatedMarketData[] memory data = new AggregatedMarketData[](assets.length);
@@ -94,6 +76,9 @@ contract UiPoolDataProvider {
         return data;
     }
 
+    /**
+     * @inheritdoc IUiPoolDataProvider
+     */
     function getUserData(LendingPool pool, address user) external view returns (UserPositionData[] memory) {
         address[] memory assets = pool.getMarketList();
         UserPositionData[] memory data = new UserPositionData[](assets.length);

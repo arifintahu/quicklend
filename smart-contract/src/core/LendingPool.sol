@@ -10,27 +10,11 @@ import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {qToken} from "../tokens/qToken.sol";
 import {InterestRateModel} from "./InterestRateModel.sol";
 import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
+import {ILendingPool} from "../interfaces/ILendingPool.sol";
 
-contract LendingPool is ReentrancyGuard, Ownable {
+contract LendingPool is ReentrancyGuard, Ownable, ILendingPool {
     using SafeERC20 for IERC20;
     using FixedPointMathLib for uint256;
-
-    // Data Structures
-    struct Market {
-        bool isListed;
-        uint256 ltv;              // Loan to Value (e.g. 0.8e18)
-        uint256 liqThreshold;     // Liquidation Threshold (e.g. 0.85e18)
-        uint256 liqBonus;         // Bonus for liquidators (e.g. 0.05e18)
-        
-        InterestRateModel interestRateModel;
-        qToken qTokenAddress;
-        
-        // State
-        uint256 totalSupplied;    // Total Underlying Supplied
-        uint256 totalBorrowed;    // Total Underlying Borrowed
-        uint256 borrowIndex;      // Accumulator for borrow interest (starts at 1e18)
-        uint256 lastUpdateTimestamp;
-    }
 
     // State Variables
     mapping(address => Market) public markets; // asset -> Market
@@ -40,30 +24,15 @@ contract LendingPool is ReentrancyGuard, Ownable {
     
     IPriceOracle public oracle;
 
-    // Events
-    event MarketInitialized(address indexed asset, address qToken);
-    event Supply(address indexed asset, address indexed user, uint256 amount);
-    event Withdraw(address indexed asset, address indexed user, uint256 amount);
-    event Borrow(address indexed asset, address indexed user, uint256 amount);
-    event Repay(address indexed asset, address indexed user, uint256 amount);
-    event Liquidate(address indexed asset, address indexed user, uint256 amount, address liquidator);
-    event ReserveUsedAsCollateralEnabled(address indexed asset, address indexed user);
-    event ReserveUsedAsCollateralDisabled(address indexed asset, address indexed user);
-
-    // Errors
-    error MarketNotListed();
-    error MarketAlreadyListed();
-    error InsufficientCollateral();
-    error HealthFactorTooLow();
-    error AmountZero();
-    error TransferFailed();
-
     constructor(address _oracle) Ownable(msg.sender) {
         oracle = IPriceOracle(_oracle);
     }
 
     // --- Admin Functions ---
 
+    /**
+     * @inheritdoc ILendingPool
+     */
     function initMarket(
         address asset,
         address _irModel,
@@ -98,7 +67,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     // --- Core Interaction Functions ---
 
     /**
-     * @notice Sets the asset as collateral or not.
+     * @inheritdoc ILendingPool
      */
     function setUserUseReserveAsCollateral(address asset, bool useAsCollateral) external nonReentrant {
         Market storage market = markets[asset];
@@ -120,7 +89,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Supply assets to the pool and receive qTokens.
+     * @inheritdoc ILendingPool
      */
     function supply(address asset, uint256 amount) external nonReentrant {
         if (amount == 0) revert AmountZero();
@@ -147,7 +116,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Withdraw assets by burning qTokens.
+     * @inheritdoc ILendingPool
      */
     function withdraw(address asset, uint256 amount) external nonReentrant {
         if (amount == 0) revert AmountZero();
@@ -171,7 +140,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Borrow assets against collateral.
+     * @inheritdoc ILendingPool
      */
     function borrow(address asset, uint256 amount) external nonReentrant {
         if (amount == 0) revert AmountZero();
@@ -196,7 +165,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Repay borrowed assets.
+     * @inheritdoc ILendingPool
      */
     function repay(address asset, uint256 amount) external nonReentrant {
         if (amount == 0) revert AmountZero();
@@ -227,7 +196,7 @@ contract LendingPool is ReentrancyGuard, Ownable {
     }
 
     /**
-     * @notice Liquidate an undercollateralized position.
+     * @inheritdoc ILendingPool
      */
     function liquidate(address assetCollateral, address assetBorrow, address user, uint256 debtToCover) external nonReentrant {
         Market storage marketBorrow = markets[assetBorrow];
@@ -294,10 +263,16 @@ contract LendingPool is ReentrancyGuard, Ownable {
 
     // --- View Functions ---
 
+    /**
+     * @inheritdoc ILendingPool
+     */
     function getMarketList() external view returns (address[] memory) {
         return marketList;
     }
 
+    /**
+     * @inheritdoc ILendingPool
+     */
     function getUserHealthFactor(address user) public view returns (uint256) {
         return _calculateHealth(user, false); // False = Use Liquidation Threshold
     }
