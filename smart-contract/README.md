@@ -9,6 +9,61 @@ The core smart contracts for the QuickLend decentralized lending protocol. Built
 *   **`InterestRateModel.sol`**: Calculates borrow and supply rates based on pool utilization.
 *   **`UiPoolDataProvider.sol`**: Helper contract for the frontend to fetch aggregated market data.
 
+## Contract Interaction Flow
+
+### High-Level Architecture
+
+```mermaid
+graph TD
+    User[User] -->|Supply/Borrow/Repay| LP[LendingPool]
+    Frontend[Frontend] -->|Read Data| UDP[UiPoolDataProvider]
+    
+    subgraph Core Protocol
+        LP -->|Mint/Burn| qT[qToken]
+        LP -->|Get Rates| IRM[InterestRateModel]
+        LP -->|Get Prices| Oracle[PriceOracle]
+        LP -->|Transfer Assets| ERC20[Underlying ERC20]
+    end
+    
+    subgraph Periphery
+        UDP -->|Read State| LP
+        UDP -->|Read Prices| Oracle
+    end
+```
+
+### Supply & Borrow Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant LP as LendingPool
+    participant Oracle as PriceOracle
+    participant Token as ERC20
+    participant qToken as qToken
+
+    %% Supply Flow
+    Note over User, qToken: Supply Flow
+    User->>LP: supply(asset, 100)
+    LP->>LP: _accrueInterest()
+    LP->>Token: transferFrom(User, Pool, 100)
+    LP->>qToken: mint(User, 100)
+    LP-->>User: Emit Supply Event
+
+    %% Borrow Flow
+    Note over User, qToken: Borrow Flow
+    User->>LP: borrow(asset, 50)
+    LP->>LP: _accrueInterest()
+    LP->>Oracle: getAssetPrice(Collateral)
+    LP->>Oracle: getAssetPrice(BorrowAsset)
+    LP->>LP: validateHealthFactor()
+    alt Health Factor < 1.0
+        LP-->>User: Revert: HealthFactorTooLow
+    else Health Factor >= 1.0
+        LP->>Token: transfer(User, 50)
+        LP-->>User: Emit Borrow Event
+    end
+```
+
 ## Getting Started
 
 ### Prerequisites
