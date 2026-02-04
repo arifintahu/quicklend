@@ -399,15 +399,23 @@ contract LendingPoolTest is Test {
         );
     }
 
-    function test_SetOracle() public {
+    function test_ProposeAndConfirmOracle() public {
         MockPriceOracle newOracle = new MockPriceOracle();
-        pool.setOracle(address(newOracle));
+        pool.proposeOracle(address(newOracle));
+
+        // Cannot confirm before timelock
+        vm.expectRevert(ILendingPool.OracleTimelockNotMet.selector);
+        pool.confirmOracle();
+
+        // Warp past timelock
+        vm.warp(block.timestamp + 48 hours);
+        pool.confirmOracle();
         assertEq(address(pool.oracle()), address(newOracle));
     }
 
-    function test_SetOracle_RevertZeroAddress() public {
+    function test_ProposeOracle_RevertZeroAddress() public {
         vm.expectRevert(ILendingPool.ZeroAddress.selector);
-        pool.setOracle(address(0));
+        pool.proposeOracle(address(0));
     }
 
     function test_Pause() public {

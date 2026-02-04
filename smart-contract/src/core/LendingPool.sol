@@ -21,14 +21,21 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
     // Constants
     uint256 public constant CLOSE_FACTOR = 0.5e18; // 50% max liquidation per tx
     uint256 public constant MAX_LIQ_BONUS = 0.2e18; // 20% max liquidation bonus
+    uint256 public constant MAX_MARKETS = 20; // M-01: cap on number of markets
+    uint256 public constant ORACLE_TIMELOCK = 48 hours; // H-03: timelock for oracle changes
 
     // State Variables
     mapping(address => Market) public markets; // asset -> Market
     mapping(address => mapping(address => uint256)) public userBorrowShares; // asset -> user -> scaled debt
     mapping(address => mapping(address => bool)) public userCollateralEnabled; // asset -> user -> isCollateral
+    mapping(address => bool) public isRegisteredQToken; // C-02: track valid qTokens
     address[] public marketList; // List of all assets
 
     IPriceOracle public oracle;
+
+    // H-03: Oracle timelock state
+    address public pendingOracle;
+    uint256 public oracleUpdateInitiated;
 
     constructor(address _oracle) Ownable(msg.sender) {
         if (_oracle == address(0)) revert ZeroAddress();
@@ -55,6 +62,7 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         if (_liqThreshold > 1e18) revert InvalidThreshold();
         if (_liqBonus > MAX_LIQ_BONUS) revert InvalidBonus();
         if (markets[asset].isListed) revert MarketAlreadyListed();
+        if (marketList.length >= MAX_MARKETS) revert MaxMarketsReached(); // M-01
 
         // Deploy qToken
         qToken newQToken = new qToken(_name, _symbol, asset, address(this));
@@ -72,6 +80,7 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
             lastUpdateTimestamp: block.timestamp
         });
 
+        isRegisteredQToken[address(newQToken)] = true; // C-02
         marketList.push(asset);
         emit MarketInitialized(asset, address(newQToken));
     }
@@ -95,8 +104,9 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         if (useAsCollateral) {
             emit ReserveUsedAsCollateralEnabled(asset, msg.sender);
         } else {
-            // Check if user is still healthy after disabling
-            if (getUserHealthFactor(msg.sender) < 1e18) {
+            // H-02: Accrue all user markets before health check
+            _accrueAllUserMarkets(msg.sender);
+            if (_calculateHealth(msg.sender, false) < 1e18) {
                 revert HealthFactorTooLow();
             }
             emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
@@ -116,10 +126,12 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
 
         _accrueInterest(asset);
 
-        // Transfer asset from user
+        // H-05: Measure actual received amount (fee-on-transfer protection)
+        uint256 balanceBefore = IERC20(asset).balanceOf(address(this));
         IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
+        uint256 actualAmount = IERC20(asset).balanceOf(address(this)) - balanceBefore;
 
-        market.totalSupplied += amount;
+        market.totalSupplied += actualAmount;
 
         // Auto-enable as collateral if first deposit (balance was 0)
         if (
@@ -130,10 +142,10 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
             emit ReserveUsedAsCollateralEnabled(asset, msg.sender);
         }
 
-        // Mint qTokens
-        market.qTokenAddress.mint(msg.sender, amount);
+        // Mint qTokens based on actual amount received
+        market.qTokenAddress.mint(msg.sender, actualAmount);
 
-        emit Supply(asset, msg.sender, amount);
+        emit Supply(asset, msg.sender, actualAmount);
     }
 
     /**
@@ -152,13 +164,14 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         market.qTokenAddress.burn(msg.sender, amount);
         market.totalSupplied -= amount;
 
-        // Transfer underlying
-        IERC20(asset).safeTransfer(msg.sender, amount);
-
-        // Verify Safety (Using Liquidation Threshold - Standard)
-        if (getUserHealthFactor(msg.sender) < 1e18) {
+        // M-04 (CEI): Health check BEFORE external transfer
+        // H-01: Accrue all user markets for accurate health
+        _accrueAllUserMarkets(msg.sender);
+        if (_calculateHealth(msg.sender, false) < 1e18) {
             revert HealthFactorTooLow();
         }
+
+        IERC20(asset).safeTransfer(msg.sender, amount);
 
         emit Withdraw(asset, msg.sender, amount);
     }
@@ -182,6 +195,8 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         userBorrowShares[asset][msg.sender] += scaledAmount;
         market.totalBorrowed += amount;
 
+        // H-01: Accrue all user markets before health check
+        _accrueAllUserMarkets(msg.sender);
         // Check Health Factor (Using LTV - Stricter for new borrows)
         if (_calculateHealth(msg.sender, true) < 1e18) {
             revert HealthFactorTooLow();
@@ -208,25 +223,27 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         // Cap repayment to actual debt to prevent loss of user funds
         uint256 actualRepayment = amount > debtAmount ? debtAmount : amount;
 
-        // Transfer only the actual repayment amount from user
+        // H-05: Measure actual received amount (fee-on-transfer protection)
+        uint256 balanceBefore = IERC20(asset).balanceOf(address(this));
         IERC20(asset).safeTransferFrom(
             msg.sender,
             address(this),
             actualRepayment
         );
+        uint256 actualReceived = IERC20(asset).balanceOf(address(this)) - balanceBefore;
 
-        if (actualRepayment >= debtAmount) {
+        if (actualReceived >= debtAmount) {
             // Full Repay
             userBorrowShares[asset][msg.sender] = 0;
             market.totalBorrowed -= debtAmount;
         } else {
             // Partial Repay
-            uint256 sharesToBurn = actualRepayment.divWad(market.borrowIndex);
+            uint256 sharesToBurn = actualReceived.divWad(market.borrowIndex);
             userBorrowShares[asset][msg.sender] -= sharesToBurn;
-            market.totalBorrowed -= actualRepayment;
+            market.totalBorrowed -= actualReceived;
         }
 
-        emit Repay(asset, msg.sender, actualRepayment);
+        emit Repay(asset, msg.sender, actualReceived);
     }
 
     /**
@@ -238,11 +255,20 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         address user,
         uint256 debtToCover
     ) external nonReentrant whenNotPaused {
+        // L-04: Explicit market listing checks
+        if (!markets[assetCollateral].isListed) revert MarketNotListed();
+        if (!markets[assetBorrow].isListed) revert MarketNotListed();
+        // M-05: Prevent self-liquidation
+        if (msg.sender == user) revert SelfLiquidationNotAllowed();
+
         _accrueInterest(assetBorrow);
         _accrueInterest(assetCollateral);
 
+        // H-01: Accrue all user markets for accurate health factor
+        _accrueAllUserMarkets(user);
+
         // Check Health (Using Liquidation Threshold)
-        if (getUserHealthFactor(user) >= 1e18) revert HealthFactorTooLow(); // User is healthy, can't liquidate
+        if (_calculateHealth(user, false) >= 1e18) revert HealthFactorTooLow(); // User is healthy, can't liquidate
 
         // Calculate actual debt to cover
         uint256 actualDebtToCover = _calculateActualDebtToCover(
@@ -251,14 +277,7 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
             debtToCover
         );
 
-        // Liquidator repays debt
-        IERC20(assetBorrow).safeTransferFrom(
-            msg.sender,
-            address(this),
-            actualDebtToCover
-        );
-
-        // Update User Debt
+        // M-04 (CEI): Update debt state BEFORE external transfers
         Market storage marketBorrow = markets[assetBorrow];
         uint256 sharesBurnt = actualDebtToCover.divWad(
             marketBorrow.borrowIndex
@@ -273,6 +292,20 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
             user,
             actualDebtToCover
         );
+
+        // H-05: Fee-on-transfer protection for liquidator payment
+        uint256 balanceBefore = IERC20(assetBorrow).balanceOf(address(this));
+        IERC20(assetBorrow).safeTransferFrom(
+            msg.sender,
+            address(this),
+            actualDebtToCover
+        );
+        uint256 actualReceived = IERC20(assetBorrow).balanceOf(address(this)) - balanceBefore;
+        if (actualReceived < actualDebtToCover) {
+            // If fee-on-transfer reduced the received amount, we've already
+            // credited the full debt reduction. Revert to prevent under-payment.
+            revert TransferFailed();
+        }
 
         emit Liquidate(assetCollateral, user, collateralAmount, msg.sender);
     }
@@ -304,6 +337,8 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
 
     /**
      * @dev Calculates collateral to seize and transfers it to the liquidator.
+     *      C-01: Normalizes decimals for cross-decimal liquidations.
+     *      H-04: Caps seized amount to available collateral balance.
      */
     function _seizeCollateral(
         address assetCollateral,
@@ -311,15 +346,43 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         address user,
         uint256 actualDebtToCover
     ) internal returns (uint256 collateralAmount) {
-        uint256 debtValueUsd = actualDebtToCover.mulWad(
+        // C-01: Normalize debt to 18 decimals before USD calculation
+        uint8 borrowDecimals = IERC20Metadata(assetBorrow).decimals();
+        uint8 collateralDecimals = IERC20Metadata(assetCollateral).decimals();
+
+        uint256 normalizedDebt = actualDebtToCover;
+        if (borrowDecimals < 18) {
+            normalizedDebt = actualDebtToCover * 10 ** (18 - borrowDecimals);
+        } else if (borrowDecimals > 18) {
+            normalizedDebt = actualDebtToCover / 10 ** (borrowDecimals - 18);
+        }
+
+        uint256 debtValueUsd = normalizedDebt.mulWad(
             _getValidatedPrice(assetBorrow)
         );
         uint256 collateralValueUsd = debtValueUsd.mulWad(
             1e18 + markets[assetCollateral].liqBonus
         );
-        collateralAmount = collateralValueUsd.divWad(
+
+        // Result in 18 decimals
+        uint256 normalizedCollateral = collateralValueUsd.divWad(
             _getValidatedPrice(assetCollateral)
         );
+
+        // De-normalize to collateral asset's decimals
+        if (collateralDecimals < 18) {
+            collateralAmount = normalizedCollateral / 10 ** (18 - collateralDecimals);
+        } else if (collateralDecimals > 18) {
+            collateralAmount = normalizedCollateral * 10 ** (collateralDecimals - 18);
+        } else {
+            collateralAmount = normalizedCollateral;
+        }
+
+        // H-04: Cap to available qToken balance to prevent revert on deep underwater positions
+        uint256 availableCollateral = markets[assetCollateral].qTokenAddress.balanceOf(user);
+        if (collateralAmount > availableCollateral) {
+            collateralAmount = availableCollateral;
+        }
 
         // Seize Collateral: Transfer qTokens from User to Liquidator
         markets[assetCollateral].qTokenAddress.seize(
@@ -368,6 +431,19 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         uint256 reserveFactor = market.interestRateModel.RESERVE_FACTOR();
         uint256 supplierInterest = interestEarned.mulWad(1e18 - reserveFactor);
         market.totalSupplied += supplierInterest;
+    }
+
+    /**
+     * @dev H-01/H-02: Accrues interest for all markets where the user has borrow positions.
+     *      Called before health factor calculations to ensure accurate debt values.
+     */
+    function _accrueAllUserMarkets(address user) internal {
+        for (uint256 i = 0; i < marketList.length; i++) {
+            address asset = marketList[i];
+            if (userBorrowShares[asset][user] > 0) {
+                _accrueInterest(asset);
+            }
+        }
     }
 
     /**
@@ -458,11 +534,38 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
     /**
      * @inheritdoc ILendingPool
      */
-    function setOracle(address newOracle) external onlyOwner {
+    function proposeOracle(address newOracle) external onlyOwner {
         if (newOracle == address(0)) revert ZeroAddress();
+        pendingOracle = newOracle;
+        oracleUpdateInitiated = block.timestamp;
+        emit OracleUpdateProposed(newOracle, block.timestamp + ORACLE_TIMELOCK);
+    }
+
+    /**
+     * @inheritdoc ILendingPool
+     */
+    function confirmOracle() external onlyOwner {
+        if (pendingOracle == address(0)) revert ZeroAddress();
+        if (block.timestamp < oracleUpdateInitiated + ORACLE_TIMELOCK)
+            revert OracleTimelockNotMet();
+
         address oldOracle = address(oracle);
-        oracle = IPriceOracle(newOracle);
-        emit OracleUpdated(oldOracle, newOracle);
+        oracle = IPriceOracle(pendingOracle);
+        pendingOracle = address(0);
+        oracleUpdateInitiated = 0;
+        emit OracleUpdated(oldOracle, address(oracle));
+    }
+
+    /**
+     * @dev C-02: Callback from qToken to verify user health after a direct qToken transfer.
+     *      Only callable by registered qTokens.
+     */
+    function checkHealthAfterTransfer(address user) external {
+        if (!isRegisteredQToken[msg.sender]) revert CallerNotQToken();
+        _accrueAllUserMarkets(user);
+        if (_calculateHealth(user, false) < 1e18) {
+            revert HealthFactorTooLow();
+        }
     }
 
     /**
