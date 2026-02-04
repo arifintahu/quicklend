@@ -15,7 +15,7 @@ interface IUiPoolDataProvider {
         uint256 totalSupplied;
         uint256 totalBorrowed;
         uint256 availableLiquidity;
-        uint256 priceUSD;
+        uint256 priceUsd;
     }
 
     struct UserPositionData {
@@ -31,7 +31,9 @@ interface IUiPoolDataProvider {
      * @param pool The LendingPool contract.
      * @return An array of AggregatedMarketData structs.
      */
-    function getMarketData(LendingPool pool) external view returns (AggregatedMarketData[] memory);
+    function getMarketData(
+        LendingPool pool
+    ) external view returns (AggregatedMarketData[] memory);
 
     /**
      * @notice Returns user position data for all listed assets.
@@ -39,5 +41,8 @@ interface IUiPoolDataProvider {
      * @param user The address of the user.
      * @return An array of UserPositionData structs.
      */
-    function getUserData(LendingPool pool, address user) external view returns (UserPositionData[] memory);
+    function getUserData(
+        LendingPool pool,
+        address user
+    ) external view returns (UserPositionData[] memory);
 }

@@ -284,11 +284,11 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         uint256 priceBorrow = _getValidatedPrice(assetBorrow);
         uint256 priceCollateral = _getValidatedPrice(assetCollateral);
 
-        uint256 debtValueUSD = actualDebtToCover.mulWad(priceBorrow);
-        uint256 collateralValueUSD = debtValueUSD.mulWad(
+        uint256 debtValueUsd = actualDebtToCover.mulWad(priceBorrow);
+        uint256 collateralValueUsd = debtValueUsd.mulWad(
             1e18 + marketCollateral.liqBonus
         );
-        uint256 collateralAmount = collateralValueUSD.divWad(priceCollateral);
+        uint256 collateralAmount = collateralValueUsd.divWad(priceCollateral);
 
         // Seize Collateral: Transfer qTokens from User to Liquidator
         // Use `seize` to bypass allowance check (LendingPool is owner of qToken)
@@ -337,8 +337,8 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
 
         // Supplier interest = borrower interest * (1 - reserve factor)
         // Reserve factor is 10% (0.10e18) from InterestRateModel
-        uint256 RESERVE_FACTOR = market.interestRateModel.RESERVE_FACTOR();
-        uint256 supplierInterest = interestEarned.mulWad(1e18 - RESERVE_FACTOR);
+        uint256 reserveFactor = market.interestRateModel.RESERVE_FACTOR();
+        uint256 supplierInterest = interestEarned.mulWad(1e18 - reserveFactor);
         market.totalSupplied += supplierInterest;
     }
 
@@ -369,10 +369,10 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
 
     function _calculateHealth(
         address user,
-        bool useLTV
+        bool useLtv
     ) internal view returns (uint256) {
-        uint256 totalCollateralUSD = 0;
-        uint256 totalDebtUSD = 0;
+        uint256 totalCollateralUsd = 0;
+        uint256 totalDebtUsd = 0;
 
         for (uint256 i = 0; i < marketList.length; i++) {
             address asset = marketList[i];
@@ -399,8 +399,8 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
                 uint256 price = _getValidatedPrice(asset);
                 uint256 value = normalizedBalance.mulWad(price);
 
-                uint256 threshold = useLTV ? market.ltv : market.liqThreshold;
-                totalCollateralUSD += value.mulWad(threshold);
+                uint256 threshold = useLtv ? market.ltv : market.liqThreshold;
+                totalCollateralUsd += value.mulWad(threshold);
             }
 
             // Debt Value
@@ -417,12 +417,12 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
                 }
 
                 uint256 price = _getValidatedPrice(asset);
-                totalDebtUSD += normalizedDebt.mulWad(price);
+                totalDebtUsd += normalizedDebt.mulWad(price);
             }
         }
 
-        if (totalDebtUSD == 0) return type(uint256).max;
-        return totalCollateralUSD.divWad(totalDebtUSD);
+        if (totalDebtUsd == 0) return type(uint256).max;
+        return totalCollateralUsd.divWad(totalDebtUsd);
     }
 
     // --- Admin Functions ---
