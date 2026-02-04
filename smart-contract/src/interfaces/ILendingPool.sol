@@ -40,6 +40,7 @@ interface ILendingPool {
         address indexed user
     );
     event OracleUpdated(address indexed oldOracle, address indexed newOracle);
+    event OracleUpdateProposed(address indexed newOracle, uint256 executableAt);
 
     // Errors
     error MarketNotListed();
@@ -55,6 +56,10 @@ interface ILendingPool {
     error InvalidOraclePrice();
     error NothingToLiquidate();
     error LiquidationTooLarge();
+    error MaxMarketsReached();
+    error OracleTimelockNotMet();
+    error CallerNotQToken();
+    error SelfLiquidationNotAllowed();
 
     /**
      * @notice Initializes a new market.
@@ -196,10 +201,21 @@ interface ILendingPool {
     ) external view returns (bool);
 
     /**
-     * @notice Updates the price oracle address.
+     * @notice Proposes a new price oracle. Must wait ORACLE_TIMELOCK before confirming.
      * @param newOracle The address of the new oracle.
      */
-    function setOracle(address newOracle) external;
+    function proposeOracle(address newOracle) external;
+
+    /**
+     * @notice Confirms a previously proposed oracle after the timelock has elapsed.
+     */
+    function confirmOracle() external;
+
+    /**
+     * @notice Callback from qToken to verify user health after a direct transfer.
+     * @param user The address of the user who sent qTokens.
+     */
+    function checkHealthAfterTransfer(address user) external;
 
     /**
      * @notice Pauses the protocol.

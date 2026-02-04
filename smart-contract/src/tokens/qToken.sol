@@ -7,6 +7,11 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {IqToken} from "../interfaces/IqToken.sol";
 
+/// @dev Minimal interface to avoid circular imports with ILendingPool.
+interface IPoolHealthCheck {
+    function checkHealthAfterTransfer(address user) external;
+}
+
 /**
  * @title qToken
  * @notice Yield-bearing token representing a user's share in the LendingPool.
@@ -16,6 +21,9 @@ contract qToken is ERC20, Ownable, IqToken {
     address public immutable UNDERLYING_ASSET;
     uint8 private _decimals;
 
+    /// @dev Flag to bypass health check during pool-controlled operations (seize).
+    bool private _inPoolOperation;
+
     /**
      * @param name Token Name (e.g., "QuickLend USDC")
      * @param symbol Token Symbol (e.g., "qUSDC")
@@ -23,8 +31,8 @@ contract qToken is ERC20, Ownable, IqToken {
      * @param _lendingPool The address of the LendingPool (initial owner).
      */
     constructor(
-        string memory name, 
-        string memory symbol, 
+        string memory name,
+        string memory symbol,
         address _underlyingAsset,
         address _lendingPool
     ) ERC20(name, symbol) Ownable(_lendingPool) {
@@ -58,6 +66,22 @@ contract qToken is ERC20, Ownable, IqToken {
      * @inheritdoc IqToken
      */
     function seize(address from, address to, uint256 amount) external onlyOwner {
+        _inPoolOperation = true;
         _transfer(from, to, amount);
+        _inPoolOperation = false;
+    }
+
+    /**
+     * @dev Overrides ERC20._update to enforce a health check on direct user transfers.
+     *      Mint (from=0) and burn (to=0) are pool-controlled and skip the check.
+     *      Seize operations set _inPoolOperation to also skip the check.
+     */
+    function _update(address from, address to, uint256 value) internal override {
+        super._update(from, to, value);
+
+        // Only check health on user-initiated transfers (not mint, burn, or seize)
+        if (from != address(0) && to != address(0) && !_inPoolOperation) {
+            IPoolHealthCheck(owner()).checkHealthAfterTransfer(from);
+        }
     }
 }
