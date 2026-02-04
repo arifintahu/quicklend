@@ -26,60 +26,69 @@ contract UiPoolDataProvider is IUiPoolDataProvider {
         );
 
         for (uint256 i = 0; i < assets.length; i++) {
-            address asset = assets[i];
+            data[i] = _buildMarketData(pool, assets[i]);
+        }
+        return data;
+    }
 
-            // Get Market Struct
-            // 1. isListed
-            // 2. ltv
-            // 3. liqThreshold
-            // 4. liqBonus
-            // 5. interestRateModel
-            // 6. qTokenAddress
-            // 7. totalSupplied
-            // 8. totalBorrowed
-            // 9. borrowIndex
-            // 10. lastUpdateTimestamp
-            (
-                bool isListed,
-                uint256 ltv,
-                uint256 liqThreshold,
-                ,
-                InterestRateModel irModel,
-                ,
-                uint256 totalSupplied,
-                uint256 totalBorrowed,
-                ,
+    /**
+     * @dev Builds market data for a single asset.
+     */
+    function _buildMarketData(
+        LendingPool pool,
+        address asset
+    ) internal view returns (AggregatedMarketData memory) {
+        (
+            bool isListed,
+            uint256 ltv,
+            uint256 liqThreshold,
+            ,
+            InterestRateModel irModel,
+            ,
+            uint256 totalSupplied,
+            uint256 totalBorrowed,
+            ,
 
-            ) = pool.markets(asset);
+        ) = pool.markets(asset);
 
-            if (!isListed) continue;
+        if (!isListed) {
+            return
+                AggregatedMarketData({
+                    asset: address(0),
+                    symbol: "",
+                    decimals: 0,
+                    ltv: 0,
+                    liqThreshold: 0,
+                    supplyRate: 0,
+                    borrowRate: 0,
+                    totalSupplied: 0,
+                    totalBorrowed: 0,
+                    availableLiquidity: 0,
+                    priceUsd: 0
+                });
+        }
 
-            // Get Rates
-            uint256 utilization = irModel.getUtilization(
-                totalBorrowed,
-                totalSupplied
-            );
-            uint256 borrowRate = irModel.getBorrowRate(utilization);
-            uint256 supplyRate = irModel.getSupplyRate(borrowRate, utilization);
+        // Get Rates
+        uint256 utilization = irModel.getUtilization(
+            totalBorrowed,
+            totalSupplied
+        );
+        uint256 borrowRate = irModel.getBorrowRate(utilization);
 
-            // Get Price
-            uint256 price = pool.oracle().getAssetPrice(asset);
-
-            data[i] = AggregatedMarketData({
+        return
+            AggregatedMarketData({
                 asset: asset,
                 symbol: IERC20Metadata(asset).symbol(),
                 decimals: IERC20Metadata(asset).decimals(),
                 ltv: ltv,
                 liqThreshold: liqThreshold,
-                supplyRate: supplyRate,
+                supplyRate: irModel.getSupplyRate(borrowRate, utilization),
                 borrowRate: borrowRate,
                 totalSupplied: totalSupplied,
                 totalBorrowed: totalBorrowed,
                 availableLiquidity: IERC20(asset).balanceOf(address(pool)),
-                priceUsd: price
+                priceUsd: pool.oracle().getAssetPrice(asset)
             });
-        }
-        return data;
     }
 
     /**
