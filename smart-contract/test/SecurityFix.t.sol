@@ -9,7 +9,6 @@ import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {MockFeeERC20} from "../src/mocks/MockFeeERC20.sol";
 import {qToken} from "../src/tokens/qToken.sol";
 import {ILendingPool} from "../src/interfaces/ILendingPool.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SecurityFixTest is Test {
     LendingPool pool;
@@ -38,17 +37,32 @@ contract SecurityFixTest is Test {
 
         // Init 18-decimal markets
         pool.initMarket(
-            address(usdc18), address(irModel),
-            0.8e18, 0.85e18, 0.05e18, "qUSDC18", "qUSDC18"
+            address(usdc18),
+            address(irModel),
+            0.8e18,
+            0.85e18,
+            0.05e18,
+            "qUSDC18",
+            "qUSDC18"
         );
         pool.initMarket(
-            address(weth18), address(irModel),
-            0.75e18, 0.80e18, 0.05e18, "qWETH", "qWETH"
+            address(weth18),
+            address(irModel),
+            0.75e18,
+            0.80e18,
+            0.05e18,
+            "qWETH",
+            "qWETH"
         );
         // Init 6-decimal USDC market
         pool.initMarket(
-            address(usdc6), address(irModel),
-            0.8e18, 0.85e18, 0.05e18, "qUSDC6", "qUSDC6"
+            address(usdc6),
+            address(irModel),
+            0.8e18,
+            0.85e18,
+            0.05e18,
+            "qUSDC6",
+            "qUSDC6"
         );
 
         // Set prices
@@ -114,7 +128,11 @@ contract SecurityFixTest is Test {
         //   collateralAmount = 2625e18 / 1e12 = 2625e6 (6-decimal USDC)
         (, , , , , qToken qUsdc6, , , , ) = pool.markets(address(usdc6));
         uint256 liquidatorQBalance = qUsdc6.balanceOf(liquidator);
-        assertEq(liquidatorQBalance, 2625e6, "Liquidator should receive 2625 qUSDC6");
+        assertEq(
+            liquidatorQBalance,
+            2625e6,
+            "Liquidator should receive 2625 qUSDC6"
+        );
     }
 
     function test_C01_SameDecimalLiquidationStillWorks() public {
@@ -202,7 +220,7 @@ contract SecurityFixTest is Test {
         // user1 borrows from BOTH markets
         vm.startPrank(user1);
         pool.supply(address(usdc18), 10_000e18);
-        pool.borrow(address(weth18), 1e18);   // borrow WETH
+        pool.borrow(address(weth18), 1e18); // borrow WETH
         pool.borrow(address(usdc18), 1000e18); // borrow USDC
         vm.stopPrank();
 
@@ -211,12 +229,16 @@ contract SecurityFixTest is Test {
 
         // When user1 borrows more WETH, _accrueAllUserMarkets should accrue BOTH markets
         // The USDC market interest should be accrued even though user1 is borrowing WETH
-        (, , , , , , , uint256 usdcBorrowedBefore, , ) = pool.markets(address(usdc18));
+        (, , , , , , , uint256 usdcBorrowedBefore, , ) = pool.markets(
+            address(usdc18)
+        );
 
         vm.prank(user1);
         pool.borrow(address(weth18), 0.001e18); // triggers accrual
 
-        (, , , , , , , uint256 usdcBorrowedAfter, , ) = pool.markets(address(usdc18));
+        (, , , , , , , uint256 usdcBorrowedAfter, , ) = pool.markets(
+            address(usdc18)
+        );
 
         // USDC market totalBorrowed should have increased (interest accrued)
         assertTrue(
@@ -240,14 +262,18 @@ contract SecurityFixTest is Test {
         // Warp
         vm.warp(block.timestamp + 365 days);
 
-        (, , , , , , , uint256 wethBorrowedBefore, , ) = pool.markets(address(weth18));
+        (, , , , , , , uint256 wethBorrowedBefore, , ) = pool.markets(
+            address(weth18)
+        );
 
         // Disabling WETH collateral triggers _accrueAllUserMarkets
         // (WETH collateral is small, but the borrow interest should still accrue)
         vm.prank(user1);
         pool.setUserUseReserveAsCollateral(address(weth18), false);
 
-        (, , , , , , , uint256 wethBorrowedAfter, , ) = pool.markets(address(weth18));
+        (, , , , , , , uint256 wethBorrowedAfter, , ) = pool.markets(
+            address(weth18)
+        );
         assertTrue(
             wethBorrowedAfter > wethBorrowedBefore,
             "Interest should be accrued when toggling collateral"
@@ -314,8 +340,16 @@ contract SecurityFixTest is Test {
 
         // Liquidator receives the capped amount (all of user's collateral)
         uint256 liquidatorReceived = qUsdc.balanceOf(liquidator);
-        assertEq(liquidatorReceived, userQBalanceBefore, "Seize should be capped to available balance");
-        assertEq(qUsdc.balanceOf(user1), 0, "User should have 0 qUSDC after capped seize");
+        assertEq(
+            liquidatorReceived,
+            userQBalanceBefore,
+            "Seize should be capped to available balance"
+        );
+        assertEq(
+            qUsdc.balanceOf(user1),
+            0,
+            "User should have 0 qUSDC after capped seize"
+        );
     }
 
     // ==================== H-05: Fee-on-Transfer Accounting ====================
@@ -324,8 +358,13 @@ contract SecurityFixTest is Test {
         MockFeeERC20 feeToken = new MockFeeERC20("FEE", "FEE", 18);
         oracle.setPrice(address(feeToken), 1e18);
         pool.initMarket(
-            address(feeToken), address(irModel),
-            0.8e18, 0.85e18, 0.05e18, "qFEE", "qFEE"
+            address(feeToken),
+            address(irModel),
+            0.8e18,
+            0.85e18,
+            0.05e18,
+            "qFEE",
+            "qFEE"
         );
 
         feeToken.mint(user1, 10_000e18);
@@ -336,17 +375,32 @@ contract SecurityFixTest is Test {
         pool.supply(address(feeToken), 1000e18);
 
         // 2% fee → actual received = 980e18
-        (, , , , , qToken qFee, uint256 totalSupplied, , , ) = pool.markets(address(feeToken));
-        assertEq(totalSupplied, 980e18, "totalSupplied should reflect actual received amount");
-        assertEq(qFee.balanceOf(user1), 980e18, "qToken minted should match actual received");
+        (, , , , , qToken qFee, uint256 totalSupplied, , , ) = pool.markets(
+            address(feeToken)
+        );
+        assertEq(
+            totalSupplied,
+            980e18,
+            "totalSupplied should reflect actual received amount"
+        );
+        assertEq(
+            qFee.balanceOf(user1),
+            980e18,
+            "qToken minted should match actual received"
+        );
     }
 
     function test_H05_FeeOnTransferRepayAccountsCorrectly() public {
         MockFeeERC20 feeToken = new MockFeeERC20("FEE", "FEE", 18);
         oracle.setPrice(address(feeToken), 1e18);
         pool.initMarket(
-            address(feeToken), address(irModel),
-            0.8e18, 0.85e18, 0.05e18, "qFEE", "qFEE"
+            address(feeToken),
+            address(irModel),
+            0.8e18,
+            0.85e18,
+            0.05e18,
+            "qFEE",
+            "qFEE"
         );
 
         // user2 supplies for borrow liquidity
@@ -369,8 +423,14 @@ contract SecurityFixTest is Test {
         vm.stopPrank();
 
         // User should still have remaining debt (partial repay with reduced amount)
-        uint256 remainingShares = pool.userBorrowShares(address(feeToken), user1);
-        assertTrue(remainingShares > 0, "User should still have debt after partial repay");
+        uint256 remainingShares = pool.userBorrowShares(
+            address(feeToken),
+            user1
+        );
+        assertTrue(
+            remainingShares > 0,
+            "User should still have debt after partial repay"
+        );
     }
 
     // ==================== M-01: MAX_MARKETS Cap ====================
@@ -386,8 +446,11 @@ contract SecurityFixTest is Test {
             );
             oracle.setPrice(address(token), 1e18);
             pool.initMarket(
-                address(token), address(irModel),
-                0.7e18, 0.8e18, 0.05e18,
+                address(token),
+                address(irModel),
+                0.7e18,
+                0.8e18,
+                0.05e18,
                 string(abi.encodePacked("qTKN", vm.toString(i))),
                 string(abi.encodePacked("qTKN", vm.toString(i)))
             );
@@ -398,8 +461,13 @@ contract SecurityFixTest is Test {
         oracle.setPrice(address(oneMore), 1e18);
         vm.expectRevert(ILendingPool.MaxMarketsReached.selector);
         pool.initMarket(
-            address(oneMore), address(irModel),
-            0.7e18, 0.8e18, 0.05e18, "qEXTRA", "qEXTRA"
+            address(oneMore),
+            address(irModel),
+            0.7e18,
+            0.8e18,
+            0.05e18,
+            "qEXTRA",
+            "qEXTRA"
         );
     }
 
