@@ -8,14 +8,14 @@ interface ILendingPool {
     // Data Structures
     struct Market {
         bool isListed;
-        uint256 ltv;              // Loan to Value (e.g. 0.8e18)
-        uint256 liqThreshold;     // Liquidation Threshold (e.g. 0.85e18)
-        uint256 liqBonus;         // Bonus for liquidators (e.g. 0.05e18)
+        uint256 ltv; // Loan to Value (e.g. 0.8e18)
+        uint256 liqThreshold; // Liquidation Threshold (e.g. 0.85e18)
+        uint256 liqBonus; // Bonus for liquidators (e.g. 0.05e18)
         InterestRateModel interestRateModel;
         qToken qTokenAddress;
-        uint256 totalSupplied;    // Total Underlying Supplied
-        uint256 totalBorrowed;    // Total Underlying Borrowed
-        uint256 borrowIndex;      // Accumulator for borrow interest (starts at 1e18)
+        uint256 totalSupplied; // Total Underlying Supplied
+        uint256 totalBorrowed; // Total Underlying Borrowed
+        uint256 borrowIndex; // Accumulator for borrow interest (starts at 1e18)
         uint256 lastUpdateTimestamp;
     }
 
@@ -25,9 +25,21 @@ interface ILendingPool {
     event Withdraw(address indexed asset, address indexed user, uint256 amount);
     event Borrow(address indexed asset, address indexed user, uint256 amount);
     event Repay(address indexed asset, address indexed user, uint256 amount);
-    event Liquidate(address indexed asset, address indexed user, uint256 amount, address liquidator);
-    event ReserveUsedAsCollateralEnabled(address indexed asset, address indexed user);
-    event ReserveUsedAsCollateralDisabled(address indexed asset, address indexed user);
+    event Liquidate(
+        address indexed asset,
+        address indexed user,
+        uint256 amount,
+        address liquidator
+    );
+    event ReserveUsedAsCollateralEnabled(
+        address indexed asset,
+        address indexed user
+    );
+    event ReserveUsedAsCollateralDisabled(
+        address indexed asset,
+        address indexed user
+    );
+    event OracleUpdated(address indexed oldOracle, address indexed newOracle);
 
     // Errors
     error MarketNotListed();
@@ -36,6 +48,13 @@ interface ILendingPool {
     error HealthFactorTooLow();
     error AmountZero();
     error TransferFailed();
+    error ZeroAddress();
+    error InvalidLTV();
+    error InvalidThreshold();
+    error InvalidBonus();
+    error InvalidOraclePrice();
+    error NothingToLiquidate();
+    error LiquidationTooLarge();
 
     /**
      * @notice Initializes a new market.
@@ -62,7 +81,10 @@ interface ILendingPool {
      * @param asset The address of the asset.
      * @param useAsCollateral True to enable, false to disable.
      */
-    function setUserUseReserveAsCollateral(address asset, bool useAsCollateral) external;
+    function setUserUseReserveAsCollateral(
+        address asset,
+        bool useAsCollateral
+    ) external;
 
     /**
      * @notice Supply assets to the pool and receive qTokens.
@@ -99,7 +121,12 @@ interface ILendingPool {
      * @param user The address of the borrower.
      * @param debtToCover The amount of debt to repay.
      */
-    function liquidate(address assetCollateral, address assetBorrow, address user, uint256 debtToCover) external;
+    function liquidate(
+        address assetCollateral,
+        address assetBorrow,
+        address user,
+        uint256 debtToCover
+    ) external;
 
     /**
      * @notice Returns the list of all listed assets.
@@ -128,18 +155,23 @@ interface ILendingPool {
      * @return borrowIndex The current borrow index.
      * @return lastUpdateTimestamp The last update timestamp.
      */
-    function markets(address asset) external view returns (
-        bool isListed,
-        uint256 ltv,
-        uint256 liqThreshold,
-        uint256 liqBonus,
-        InterestRateModel interestRateModel,
-        qToken qTokenAddress,
-        uint256 totalSupplied,
-        uint256 totalBorrowed,
-        uint256 borrowIndex,
-        uint256 lastUpdateTimestamp
-    );
+    function markets(
+        address asset
+    )
+        external
+        view
+        returns (
+            bool isListed,
+            uint256 ltv,
+            uint256 liqThreshold,
+            uint256 liqBonus,
+            InterestRateModel interestRateModel,
+            qToken qTokenAddress,
+            uint256 totalSupplied,
+            uint256 totalBorrowed,
+            uint256 borrowIndex,
+            uint256 lastUpdateTimestamp
+        );
 
     /**
      * @notice Returns the user's borrow shares for a specific asset.
@@ -147,7 +179,10 @@ interface ILendingPool {
      * @param user The address of the user.
      * @return The borrow shares.
      */
-    function userBorrowShares(address asset, address user) external view returns (uint256);
+    function userBorrowShares(
+        address asset,
+        address user
+    ) external view returns (uint256);
 
     /**
      * @notice Returns whether a user has enabled a specific asset as collateral.
@@ -155,5 +190,24 @@ interface ILendingPool {
      * @param user The address of the user.
      * @return True if enabled, false otherwise.
      */
-    function userCollateralEnabled(address asset, address user) external view returns (bool);
+    function userCollateralEnabled(
+        address asset,
+        address user
+    ) external view returns (bool);
+
+    /**
+     * @notice Updates the price oracle address.
+     * @param newOracle The address of the new oracle.
+     */
+    function setOracle(address newOracle) external;
+
+    /**
+     * @notice Pauses the protocol.
+     */
+    function pause() external;
+
+    /**
+     * @notice Unpauses the protocol.
+     */
+    function unpause() external;
 }
