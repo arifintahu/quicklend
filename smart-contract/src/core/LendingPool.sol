@@ -238,33 +238,18 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         address user,
         uint256 debtToCover
     ) external nonReentrant whenNotPaused {
-        Market storage marketBorrow = markets[assetBorrow];
-        Market storage marketCollateral = markets[assetCollateral];
-
         _accrueInterest(assetBorrow);
         _accrueInterest(assetCollateral);
 
         // Check Health (Using Liquidation Threshold)
-        uint256 healthFactor = getUserHealthFactor(user);
-        if (healthFactor >= 1e18) revert HealthFactorTooLow(); // User is healthy, can't liquidate
+        if (getUserHealthFactor(user) >= 1e18) revert HealthFactorTooLow(); // User is healthy, can't liquidate
 
-        // Validate user has debt in the specified borrow asset
-        uint256 userDebtShares = userBorrowShares[assetBorrow][user];
-        uint256 userDebtAmount = userDebtShares.mulWad(
-            marketBorrow.borrowIndex
+        // Calculate actual debt to cover
+        uint256 actualDebtToCover = _calculateActualDebtToCover(
+            assetBorrow,
+            user,
+            debtToCover
         );
-        if (userDebtAmount == 0) revert NothingToLiquidate();
-
-        // Apply close factor: max 50% of debt per liquidation
-        uint256 maxLiquidatable = userDebtAmount.mulWad(CLOSE_FACTOR);
-
-        // Cap debtToCover to actual debt and close factor limit
-        uint256 actualDebtToCover = debtToCover > maxLiquidatable
-            ? maxLiquidatable
-            : debtToCover;
-        if (actualDebtToCover > userDebtAmount) {
-            actualDebtToCover = userDebtAmount;
-        }
 
         // Liquidator repays debt
         IERC20(assetBorrow).safeTransferFrom(
@@ -274,31 +259,74 @@ contract LendingPool is ReentrancyGuard, Ownable, Pausable, ILendingPool {
         );
 
         // Update User Debt
+        Market storage marketBorrow = markets[assetBorrow];
         uint256 sharesBurnt = actualDebtToCover.divWad(
             marketBorrow.borrowIndex
         );
         userBorrowShares[assetBorrow][user] -= sharesBurnt;
         marketBorrow.totalBorrowed -= actualDebtToCover;
 
-        // Calculate Collateral to Seize (Debt + Bonus)
-        uint256 priceBorrow = _getValidatedPrice(assetBorrow);
-        uint256 priceCollateral = _getValidatedPrice(assetCollateral);
-
-        uint256 debtValueUsd = actualDebtToCover.mulWad(priceBorrow);
-        uint256 collateralValueUsd = debtValueUsd.mulWad(
-            1e18 + marketCollateral.liqBonus
+        // Calculate and seize collateral
+        uint256 collateralAmount = _seizeCollateral(
+            assetCollateral,
+            assetBorrow,
+            user,
+            actualDebtToCover
         );
-        uint256 collateralAmount = collateralValueUsd.divWad(priceCollateral);
+
+        emit Liquidate(assetCollateral, user, collateralAmount, msg.sender);
+    }
+
+    /**
+     * @dev Calculates actual debt to cover, applying close factor limits.
+     */
+    function _calculateActualDebtToCover(
+        address assetBorrow,
+        address user,
+        uint256 debtToCover
+    ) internal view returns (uint256) {
+        uint256 userDebtShares = userBorrowShares[assetBorrow][user];
+        uint256 userDebtAmount = userDebtShares.mulWad(
+            markets[assetBorrow].borrowIndex
+        );
+        if (userDebtAmount == 0) revert NothingToLiquidate();
+
+        uint256 maxLiquidatable = userDebtAmount.mulWad(CLOSE_FACTOR);
+        uint256 actualDebtToCover = debtToCover > maxLiquidatable
+            ? maxLiquidatable
+            : debtToCover;
+
+        return
+            actualDebtToCover > userDebtAmount
+                ? userDebtAmount
+                : actualDebtToCover;
+    }
+
+    /**
+     * @dev Calculates collateral to seize and transfers it to the liquidator.
+     */
+    function _seizeCollateral(
+        address assetCollateral,
+        address assetBorrow,
+        address user,
+        uint256 actualDebtToCover
+    ) internal returns (uint256 collateralAmount) {
+        uint256 debtValueUsd = actualDebtToCover.mulWad(
+            _getValidatedPrice(assetBorrow)
+        );
+        uint256 collateralValueUsd = debtValueUsd.mulWad(
+            1e18 + markets[assetCollateral].liqBonus
+        );
+        collateralAmount = collateralValueUsd.divWad(
+            _getValidatedPrice(assetCollateral)
+        );
 
         // Seize Collateral: Transfer qTokens from User to Liquidator
-        // Use `seize` to bypass allowance check (LendingPool is owner of qToken)
-        marketCollateral.qTokenAddress.seize(
+        markets[assetCollateral].qTokenAddress.seize(
             user,
             msg.sender,
             collateralAmount
         );
-
-        emit Liquidate(assetCollateral, user, collateralAmount, msg.sender);
     }
 
     // --- Internal Logic ---
