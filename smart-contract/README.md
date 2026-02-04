@@ -205,12 +205,20 @@ Run the test suite:
 
 ```bash
 forge test
+
+forge test --gas-report
 ```
 
 Run with verbosity for detailed output:
 
 ```bash
 forge test -vvv
+```
+
+Run coverage report:
+
+```bash
+forge coverage
 ```
 
 ### Deploy
