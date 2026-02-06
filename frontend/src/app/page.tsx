@@ -11,43 +11,66 @@ import { useMarkets, MarketData } from '@/hooks/useMarkets';
 import { useUserPositions } from '@/hooks/useUserPositions';
 import { useProtocolHealth } from '@/hooks/useProtocolHealth';
 import { useLendingActions } from '@/hooks/useLendingActions';
-import { calculateHealthFactor } from '@/lib/mock/data';
+import { calculateHealthFactor } from '@/lib/calculations';
 import { formatCurrency, formatPercentage, cn } from '@/lib/utils';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
 export default function Dashboard() {
     const { markets } = useMarkets();
-    const { userPositions } = useUserPositions();
-    const healthData = useProtocolHealth();
+    const { positions: userPositions } = useUserPositions();
+    const protocolHealth = useProtocolHealth();
     const { supply, borrow } = useLendingActions();
     const [selectedAsset, setSelectedAsset] = useState<{ asset: MarketData, action: 'supply' | 'borrow' } | null>(null);
+
+    // Calculate derived health data for UI (Net APY, Borrow Power, etc.)
+    const calculatedHealthData = calculateHealthFactor(markets, userPositions);
+
+    // Combine real logic (if available) with calculated data
+    // Use on-chain health factor if available, otherwise fallback to calculated
+    const healthData = {
+        ...calculatedHealthData,
+        healthFactor: protocolHealth.healthFactor > 0 ? protocolHealth.healthFactor : calculatedHealthData.healthFactor,
+        status: protocolHealth.status !== 'none' ? protocolHealth.status : (calculatedHealthData.healthFactor < 1 ? 'danger' : 'safe')
+    };
 
     const handleAction = (amount: number, action: 'supply' | 'borrow') => {
         if (!selectedAsset) return;
 
         if (action === 'supply') {
-            supply(selectedAsset.asset.symbol, amount);
+            supply(selectedAsset.asset, amount.toString());
         } else {
-            borrow(selectedAsset.asset.symbol, amount);
+            borrow(selectedAsset.asset, amount.toString());
         }
         setSelectedAsset(null);
     };
 
     const calculateProjectedHF = (amount: number, action: 'supply' | 'borrow', asset: MarketData) => {
         const tempPositions = userPositions.map(p => ({ ...p }));
-        const existing = tempPositions.find(p => p.assetSymbol === asset.symbol);
+        const existing = tempPositions.find(p => p.symbol === asset.symbol);
 
         if (action === 'supply') {
             if (existing) {
                 existing.suppliedAmount += amount;
             } else {
-                tempPositions.push({ assetSymbol: asset.symbol, suppliedAmount: amount, borrowedAmount: 0, isCollateral: true });
+                tempPositions.push({
+                    asset: asset.asset,
+                    symbol: asset.symbol,
+                    suppliedAmount: amount,
+                    borrowedAmount: 0,
+                    isCollateral: true
+                });
             }
         } else {
             if (existing) {
                 existing.borrowedAmount += amount;
             } else {
-                tempPositions.push({ assetSymbol: asset.symbol, suppliedAmount: 0, borrowedAmount: amount, isCollateral: false });
+                tempPositions.push({
+                    asset: asset.asset,
+                    symbol: asset.symbol,
+                    suppliedAmount: 0,
+                    borrowedAmount: amount,
+                    isCollateral: false
+                });
             }
         }
 
@@ -59,7 +82,7 @@ export default function Dashboard() {
         <>
             <Sidebar />
 
-            <main className="flex-1 md:ml-64 p-6 md:p-12 overflow-y-auto">
+            <main className="flex-1 md:ml-64 p-6 md:p-12 overflow-y-auto w-full">
                 <Navbar />
 
                 <LayoutGroup>
@@ -161,7 +184,7 @@ export default function Dashboard() {
                     asset={selectedAsset.asset}
                     action={selectedAsset.action}
                     currentHealthFactor={healthData.healthFactor}
-                    maxAmount={10000} // Mock Max
+                    maxAmount={10000} // TODO: Calculate actual max based on wallet balance/liquidity
                     onClose={() => setSelectedAsset(null)}
                     onConfirm={handleAction}
                     calculateProjectedHealthFactor={(amount, action) => calculateProjectedHF(amount, action, selectedAsset.asset)}

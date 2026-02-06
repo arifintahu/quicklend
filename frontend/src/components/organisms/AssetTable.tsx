@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserPosition } from '@/lib/mock/types';
+import { UserPosition } from '@/hooks/useUserPositions';
 import { MarketData } from '@/hooks/useMarkets';
 import { formatCurrency, formatPercentage, cn } from '@/lib/utils';
 import { GlassCard } from '@/components/atoms/GlassCard';
@@ -37,7 +37,7 @@ export const AssetTable: React.FC<AssetTableProps> = ({ markets, userPositions, 
               // Support flat structure from useMarkets hook
               const symbol = market.symbol || '';
               const name = market.symbol || '';
-              const position = userPositions?.find((p) => p.assetSymbol === symbol);
+              const position = userPositions?.find((p) => p.symbol === symbol);
 
               const totalSuppliedUSD = market.totalSupplied * market.price;
               const totalBorrowedUSD = market.totalBorrowed * market.price;

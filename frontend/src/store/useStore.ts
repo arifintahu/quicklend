@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { MOCK_MARKETS, INITIAL_USER_POSITIONS, calculateHealthFactor } from '@/lib/mock/data';
-import { MarketData, UserPosition, HealthFactorData } from '@/lib/mock/types';
+import { MarketData } from '@/hooks/useMarkets';
+import { UserPosition } from '@/hooks/useUserPositions';
+import { HealthFactorData } from '@/hooks/useProtocolHealth';
 
 interface AppState {
   // Wallet
@@ -12,8 +13,9 @@ interface AppState {
   markets: MarketData[];
   userPositions: UserPosition[];
   healthData: HealthFactorData;
-  
+
   // Actions
+  // NOTE: These actions update local state only. Real actions should use useLendingActions hook.
   supply: (assetSymbol: string, amount: number) => void;
   borrow: (assetSymbol: string, amount: number) => void;
   withdraw: (assetSymbol: string, amount: number) => void;
@@ -23,105 +25,33 @@ interface AppState {
 
 export const useStore = create<AppState>((set, get) => ({
   // Wallet Initial State
-  isConnected: true, // Mocked as connected initially for demo
-  address: "0x12...34",
-  connectWallet: () => set({ isConnected: true, address: "0x12...34" }),
+  isConnected: false,
+  address: null,
+  connectWallet: () => set({ isConnected: true, address: "0x12...34" }), // Mock connection for now if needed, or rely on Wagmi
   disconnectWallet: () => set({ isConnected: false, address: null }),
 
-  markets: MOCK_MARKETS,
-  userPositions: INITIAL_USER_POSITIONS,
-  healthData: calculateHealthFactor(MOCK_MARKETS, INITIAL_USER_POSITIONS),
+  markets: [],
+  userPositions: [],
+  healthData: { healthFactor: 0, status: 'none' } as HealthFactorData,
 
   supply: (assetSymbol, amount) => {
-    const { userPositions, markets } = get();
-    const existing = userPositions.find(p => p.assetSymbol === assetSymbol);
-    
-    let newPositions;
-    if (existing) {
-      newPositions = userPositions.map(p => 
-        p.assetSymbol === assetSymbol 
-          ? { ...p, suppliedAmount: p.suppliedAmount + amount }
-          : p
-      );
-    } else {
-      newPositions = [...userPositions, {
-        assetSymbol,
-        suppliedAmount: amount,
-        borrowedAmount: 0,
-        isCollateral: true
-      }];
-    }
-    
-    set({
-      userPositions: newPositions,
-      healthData: calculateHealthFactor(markets, newPositions)
-    });
+    // Placeholder: Real app uses standard Wagmi/Viem hooks
+    console.log('Supply action triggered via store', assetSymbol, amount);
   },
 
   borrow: (assetSymbol, amount) => {
-    const { userPositions, markets } = get();
-    const existing = userPositions.find(p => p.assetSymbol === assetSymbol);
-    
-    let newPositions;
-    if (existing) {
-      newPositions = userPositions.map(p => 
-        p.assetSymbol === assetSymbol 
-          ? { ...p, borrowedAmount: p.borrowedAmount + amount }
-          : p
-      );
-    } else {
-      newPositions = [...userPositions, {
-        assetSymbol,
-        suppliedAmount: 0,
-        borrowedAmount: amount,
-        isCollateral: false // Borrowed assets aren't collateral usually, but if supplied > 0 it might be mixed. Simplification.
-      }];
-    }
-    
-    set({
-      userPositions: newPositions,
-      healthData: calculateHealthFactor(markets, newPositions)
-    });
+    console.log('Borrow action triggered via store', assetSymbol, amount);
   },
 
   withdraw: (assetSymbol, amount) => {
-    const { userPositions, markets } = get();
-    const newPositions = userPositions.map(p => 
-      p.assetSymbol === assetSymbol 
-        ? { ...p, suppliedAmount: Math.max(0, p.suppliedAmount - amount) }
-        : p
-    );
-    
-    set({
-      userPositions: newPositions,
-      healthData: calculateHealthFactor(markets, newPositions)
-    });
+    console.log('Withdraw action triggered via store', assetSymbol, amount);
   },
 
   repay: (assetSymbol, amount) => {
-    const { userPositions, markets } = get();
-    const newPositions = userPositions.map(p => 
-      p.assetSymbol === assetSymbol 
-        ? { ...p, borrowedAmount: Math.max(0, p.borrowedAmount - amount) }
-        : p
-    );
-    
-    set({
-      userPositions: newPositions,
-      healthData: calculateHealthFactor(markets, newPositions)
-    });
+    console.log('Repay action triggered via store', assetSymbol, amount);
   },
-  
+
   toggleCollateral: (assetSymbol) => {
-      const { userPositions, markets } = get();
-      const newPositions = userPositions.map(p =>
-          p.assetSymbol === assetSymbol
-              ? { ...p, isCollateral: !p.isCollateral }
-              : p
-      );
-      set({
-          userPositions: newPositions,
-          healthData: calculateHealthFactor(markets, newPositions)
-      });
+    console.log('Toggle Collateral action triggered via store', assetSymbol);
   }
 }));
