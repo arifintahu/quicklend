@@ -195,7 +195,7 @@ For manual setup and local development, see **[DEV.md](DEV.md)**.
 
 ## Documentation
 
-- **[Development Guide](DEV.md)** — Manual setup, environment variables, testing
+- **[Development Guide](docs/DEV.md)** — Manual setup, environment variables, testing
 - **[Product Requirements](docs/PRODUCT_REQUIREMENT_DOC.md)** — Functional requirements and core mechanics
 - **[Technical Specification](docs/TECH_SPEC.md)** — Smart contract architecture and data structures
 - **[Design Philosophy](docs/DESIGN_PHILOSOPHY.md)** — UI/UX design principles
