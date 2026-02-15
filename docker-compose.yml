@@ -83,6 +83,7 @@ services:
       - contract-artifacts:/artifacts
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_RPC_URL: http://anvil:8545
     depends_on:
       backend:
         condition: service_started

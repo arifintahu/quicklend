@@ -3,13 +3,13 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { mainnet, sepolia, anvil } from 'wagmi/chains';
 
-// Use Anvil for local development
+// Use Anvil for local development — RPC URL is configurable for Docker
 const localAnvil = {
   ...anvil,
   id: 31337,
   name: 'Anvil',
   rpcUrls: {
-    default: { http: ['http://127.0.0.1:8545'] },
+    default: { http: [process.env.NEXT_PUBLIC_RPC_URL || 'http://127.0.0.1:8545'] },
   },
 };
 
