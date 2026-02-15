@@ -1,8 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, Static } from '@sinclair/typebox';
 import { publicClient, config } from '../../lib/viem.js';
+import { cacheGet, cacheSet } from '../../lib/redis.js';
+import { UI_POOL_DATA_PROVIDER_ABI } from '../../indexer/abi.js';
+import { formatUnits } from 'viem';
 
-// Response schemas
 const MarketSchema = Type.Object({
     asset: Type.String(),
     symbol: Type.String(),
@@ -27,35 +29,74 @@ const AssetParamsSchema = Type.Object({
     asset: Type.String({ pattern: '^0x[a-fA-F0-9]{40}$' }),
 });
 
+const CACHE_KEY = 'markets:all';
+const CACHE_TTL = 30; // seconds
+
+interface RawMarket {
+    asset: string;
+    symbol: string;
+    decimals: number;
+    ltv: bigint;
+    liqThreshold: bigint;
+    supplyRate: bigint;
+    borrowRate: bigint;
+    totalSupplied: bigint;
+    totalBorrowed: bigint;
+    availableLiquidity: bigint;
+    priceUsd: bigint;
+}
+
+async function fetchMarkets() {
+    if (!config.lendingPoolAddress || !config.uiDataProviderAddress) {
+        return [];
+    }
+
+    // Check cache first
+    const cached = await cacheGet<ReturnType<typeof formatMarkets>>(CACHE_KEY);
+    if (cached) return cached;
+
+    const data = await publicClient.readContract({
+        address: config.uiDataProviderAddress,
+        abi: UI_POOL_DATA_PROVIDER_ABI,
+        functionName: 'getMarketData',
+        args: [config.lendingPoolAddress],
+    });
+
+    const result = formatMarkets(data as RawMarket[]);
+    await cacheSet(CACHE_KEY, result, CACHE_TTL);
+    return result;
+}
+
+function formatMarkets(raw: RawMarket[]) {
+    return raw.map((m) => ({
+        asset: m.asset,
+        symbol: m.symbol,
+        decimals: m.decimals,
+        ltv: formatUnits(m.ltv, 18),
+        liqThreshold: formatUnits(m.liqThreshold, 18),
+        supplyAPY: formatUnits(m.supplyRate, 18),
+        borrowAPY: formatUnits(m.borrowRate, 18),
+        totalSupplied: formatUnits(m.totalSupplied, m.decimals),
+        totalBorrowed: formatUnits(m.totalBorrowed, m.decimals),
+        availableLiquidity: formatUnits(m.availableLiquidity, m.decimals),
+        priceUsd: formatUnits(m.priceUsd, 18),
+    }));
+}
+
 export const marketsRoutes: FastifyPluginAsync = async (fastify) => {
-    // GET /api/v1/markets - List all markets
+    // GET /api/v1/markets
     fastify.get('/', {
         schema: {
             tags: ['Markets'],
             summary: 'Get all lending markets',
             description: 'Returns current data for all listed lending markets',
-            response: {
-                200: MarketsResponseSchema,
-            },
+            response: { 200: MarketsResponseSchema },
         },
-    }, async (request, reply) => {
-        // In production, fetch from UiPoolDataProvider contract
-        // For now, return empty array if not configured
-        if (!config.lendingPoolAddress || !config.uiDataProviderAddress) {
-            return {
-                success: true,
-                data: [],
-                timestamp: new Date().toISOString(),
-                message: 'Contracts not configured. Set LENDING_POOL_ADDRESS and UI_DATA_PROVIDER_ADDRESS.',
-            };
-        }
-
-        // TODO: Implement actual contract call
-        // const data = await publicClient.readContract({...})
-
+    }, async (_request, _reply) => {
+        const markets = await fetchMarkets();
         return {
             success: true,
-            data: [],
+            data: markets,
             timestamp: new Date().toISOString(),
         };
     });
@@ -67,14 +108,17 @@ export const marketsRoutes: FastifyPluginAsync = async (fastify) => {
             summary: 'Get single market data',
             params: AssetParamsSchema,
         },
-    }, async (request, reply) => {
+    }, async (request, _reply) => {
         const { asset } = request.params;
+        const markets = await fetchMarkets();
+        const market = markets.find(
+            (m) => m.asset.toLowerCase() === asset.toLowerCase()
+        );
 
-        // TODO: Implement actual contract call or database lookup
+        if (!market) {
+            return { success: false, error: 'Market not found' };
+        }
 
-        return {
-            success: false,
-            error: 'Market not found',
-        };
+        return { success: true, data: market, timestamp: new Date().toISOString() };
     });
 };

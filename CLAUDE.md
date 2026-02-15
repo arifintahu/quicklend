@@ -60,17 +60,20 @@ npm run db:studio                    # Drizzle Studio GUI
 ### Frontend Layer
 - **Component pattern**: Atomic design — `components/atoms/`, `molecules/`, `organisms/`, `templates/`.
 - **Web3 stack**: Wagmi + Viem for chain interaction, RainbowKit for wallet UI, TanStack Query for data fetching.
-- **State**: Zustand (`store/`) for global state, custom hooks (`hooks/`) for contract reads/writes.
-- **Key hooks**: `useLendingActions`, `useMarkets`, `useProtocolHealth`, `useTokenApproval`, `useUserPositions`, `useWallet`.
+- **State**: Custom hooks (`hooks/`) for contract reads/writes and backend API queries.
+- **Key hooks**: `useLendingActions`, `useMarkets`, `useProtocolHealth`, `useTokenApproval`, `useUserPositions`, `useWallet`, `useWalletBalance`, `useTransactionHistory`.
 - **Contract ABIs and addresses**: Defined in `lib/contracts.ts`, addresses loaded from `NEXT_PUBLIC_*` env vars.
+- **API client**: `lib/api.ts` — backend API calls for history and analytics.
 - **Calculations**: `lib/calculations.ts` — client-side financial math (health factor, APY, etc.).
 - **Path alias**: `@/*` maps to `./src/*`.
 
 ### Backend Layer
 - **API routes** in `src/api/routes/`: `health`, `markets`, `users`, `analytics`. Swagger docs at `/docs`.
+- **Event indexer** in `src/indexer/`: Backfills historical events and watches for new ones in real-time. Materializes `userPositions` and `liquidationLogs`.
+- **Market snapshots** in `src/indexer/snapshots.ts`: Periodic (60s) snapshot of on-chain market data via UiPoolDataProvider.
 - **Database**: PostgreSQL via Drizzle ORM. Schema in `src/db/schema.ts`. Tables: events, userPositions, marketSnapshots, notificationPreferences, indexerState, liquidationLogs.
-- **Cache**: Redis via ioredis.
-- **Blockchain client**: Viem for reading on-chain data (`src/lib/`).
+- **Cache**: Redis via ioredis (`src/lib/redis.ts`). Markets API cached with 30s TTL.
+- **Blockchain client**: Viem for reading on-chain data (`src/lib/viem.ts`).
 - **Validation**: `@sinclair/typebox` for JSON schema validation on routes.
 - **Path alias**: `@/*` maps to `./src/*`.
 
@@ -80,9 +83,26 @@ npm run db:studio                    # Drizzle Studio GUI
 3. Backend materializes `userPositions` and `marketSnapshots` from events
 4. Frontend reads from backend API for historical data and from contracts directly (via UiPoolDataProvider) for real-time data
 
-## Environment Setup
+## Docker Sandbox (Recommended)
 
-- Frontend env: `frontend/.env.local` (copy from `.env.local.example`) — contract addresses, WalletConnect project ID
+Run the entire stack with a single command:
+```bash
+make up          # Build and start all services (postgres, redis, anvil, deployer, backend, frontend)
+make logs        # Follow logs from all services
+make down        # Stop everything and clean volumes
+make deploy      # Re-deploy contracts only
+```
+
+This starts: PostgreSQL, Redis, Anvil (local chain), auto-deploys contracts, starts backend (with indexer), and frontend.
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001 (Swagger docs at /docs)
+- Anvil RPC: http://localhost:8545
+
+Test tokens are auto-minted to the default Anvil account (`0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`).
+
+## Manual Environment Setup
+
+- Frontend env: `frontend/.env.local` (copy from `.env.local.example`) — contract addresses, WalletConnect project ID, API URL
 - Backend env: `backend/.env` (copy from `.env.example`) — DATABASE_URL, REDIS_URL, RPC_URL, contract addresses
 - Local chain: Anvil on port 8545, chain ID 31337
 - After deploying contracts, extract addresses from `smart-contract/broadcast/Deploy.s.sol/31337/run-latest.json`

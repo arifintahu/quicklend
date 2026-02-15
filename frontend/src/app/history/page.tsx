@@ -1,16 +1,17 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { GlassCard } from '@/components/atoms/GlassCard';
-// import { MOCK_HISTORY } from '@/lib/mock/history'; // Removed mock
-import { formatCurrency, cn } from '@/lib/utils';
+import { useTransactionHistory } from '@/hooks/useTransactionHistory';
+import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { ExternalLink, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { ExternalLink, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function HistoryPage() {
-  const history: any[] = []; // Initialize empty for now
+  const [page, setPage] = useState(1);
+  const { history, pagination, isLoading } = useTransactionHistory(page, 20);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -44,6 +45,9 @@ export default function HistoryPage() {
     return 'text-white';
   };
 
+  const shortenHash = (hash: string) =>
+    hash ? `${hash.slice(0, 6)}...${hash.slice(-4)}` : '';
+
   return (
     <>
       <Sidebar />
@@ -56,44 +60,77 @@ export default function HistoryPage() {
           transition={{ delay: 0.2 }}
         >
           <GlassCard className="p-0 overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-white/5 text-gray-400 text-xs uppercase">
-                <tr>
-                  <th className="p-6">Action</th>
-                  <th className="p-6">Asset</th>
-                  <th className="p-6 text-right">Amount</th>
-                  <th className="p-6">Status</th>
-                  <th className="p-6 text-right">Time</th>
-                  <th className="p-6 text-right">Tx Hash</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((tx) => (
-                  <tr key={tx.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className={cn("p-6 font-bold", getActionColor(tx.action))}>
-                      {tx.action}
-                    </td>
-                    <td className="p-6 font-mono text-white">
-                      {tx.assetSymbol}
-                    </td>
-                    <td className="p-6 text-right font-mono text-white">
-                      {tx.amount}
-                    </td>
-                    <td className="p-6">
-                      {getStatusBadge(tx.status)}
-                    </td>
-                    <td className="p-6 text-right text-gray-400 text-sm">
-                      {new Date(tx.timestamp).toLocaleString()}
-                    </td>
-                    <td className="p-6 text-right">
-                      <a href="#" className="flex items-center justify-end gap-1 text-[#00C6FF] hover:underline text-sm font-mono">
-                        {tx.txHash} <ExternalLink size={12} />
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {isLoading ? (
+              <div className="flex items-center justify-center p-16">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-16 text-gray-500">
+                <Clock size={48} className="mb-4 opacity-50" />
+                <p className="text-lg font-medium">No transactions yet</p>
+                <p className="text-sm mt-1">Your transaction history will appear here</p>
+              </div>
+            ) : (
+              <>
+                <table className="w-full text-left">
+                  <thead className="bg-white/5 text-gray-400 text-xs uppercase">
+                    <tr>
+                      <th className="p-6">Action</th>
+                      <th className="p-6">Asset</th>
+                      <th className="p-6 text-right">Amount</th>
+                      <th className="p-6">Status</th>
+                      <th className="p-6 text-right">Time</th>
+                      <th className="p-6 text-right">Tx Hash</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((tx, idx) => (
+                      <tr key={`${tx.txHash}-${idx}`} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className={cn("p-6 font-bold", getActionColor(tx.eventName))}>
+                          {tx.eventName}
+                        </td>
+                        <td className="p-6 font-mono text-white">
+                          {shortenHash(tx.asset)}
+                        </td>
+                        <td className="p-6 text-right font-mono text-white">
+                          {tx.amount ?? '-'}
+                        </td>
+                        <td className="p-6">
+                          {getStatusBadge('Confirmed')}
+                        </td>
+                        <td className="p-6 text-right text-gray-400 text-sm">
+                          {new Date(tx.timestamp).toLocaleString()}
+                        </td>
+                        <td className="p-6 text-right">
+                          <span className="flex items-center justify-end gap-1 text-[#00C6FF] text-sm font-mono">
+                            {shortenHash(tx.txHash)} <ExternalLink size={12} />
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                <div className="flex items-center justify-between px-6 py-4 border-t border-white/5">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={16} /> Previous
+                  </button>
+                  <span className="text-sm text-gray-500">Page {pagination.page}</span>
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={history.length < pagination.limit}
+                    className="flex items-center gap-1 text-sm text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next <ChevronRight size={16} />
+                  </button>
+                </div>
+              </>
+            )}
           </GlassCard>
         </motion.div>
       </main>

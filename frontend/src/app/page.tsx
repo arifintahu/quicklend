@@ -11,6 +11,7 @@ import { useMarkets, MarketData } from '@/hooks/useMarkets';
 import { useUserPositions } from '@/hooks/useUserPositions';
 import { useProtocolHealth } from '@/hooks/useProtocolHealth';
 import { useLendingActions } from '@/hooks/useLendingActions';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { calculateHealthFactor } from '@/lib/calculations';
 import { formatCurrency, formatPercentage, cn } from '@/lib/utils';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -21,6 +22,10 @@ export default function Dashboard() {
     const protocolHealth = useProtocolHealth();
     const { supply, borrow } = useLendingActions();
     const [selectedAsset, setSelectedAsset] = useState<{ asset: MarketData, action: 'supply' | 'borrow' } | null>(null);
+    const { balance: walletBalance } = useWalletBalance(
+        selectedAsset?.asset.asset,
+        selectedAsset?.asset.decimals
+    );
 
     // Calculate derived health data for UI (Net APY, Borrow Power, etc.)
     const calculatedHealthData = calculateHealthFactor(markets, userPositions);
@@ -36,10 +41,11 @@ export default function Dashboard() {
     const handleAction = (amount: number, action: 'supply' | 'borrow') => {
         if (!selectedAsset) return;
 
+        const { asset: assetAddress, decimals } = selectedAsset.asset;
         if (action === 'supply') {
-            supply(selectedAsset.asset, amount.toString());
+            supply(assetAddress, amount.toString(), decimals);
         } else {
-            borrow(selectedAsset.asset, amount.toString());
+            borrow(assetAddress, amount.toString(), decimals);
         }
         setSelectedAsset(null);
     };
@@ -76,6 +82,21 @@ export default function Dashboard() {
 
         const newData = calculateHealthFactor(markets, tempPositions);
         return newData.healthFactor;
+    };
+
+    const getMaxAmount = () => {
+        if (!selectedAsset) return 0;
+        if (selectedAsset.action === 'supply') {
+            return walletBalance;
+        }
+        // For borrow: min(available liquidity, remaining borrow power / price)
+        const remainingBorrowPower = calculatedHealthData.borrowPowerUsed < 1
+            ? (1 - calculatedHealthData.borrowPowerUsed) * calculatedHealthData.totalCollateralUSD
+            : 0;
+        const maxByPower = selectedAsset.asset.price > 0
+            ? remainingBorrowPower / selectedAsset.asset.price
+            : 0;
+        return Math.min(selectedAsset.asset.availableLiquidity, maxByPower);
     };
 
     return (
@@ -184,7 +205,7 @@ export default function Dashboard() {
                     asset={selectedAsset.asset}
                     action={selectedAsset.action}
                     currentHealthFactor={healthData.healthFactor}
-                    maxAmount={10000} // TODO: Calculate actual max based on wallet balance/liquidity
+                    maxAmount={getMaxAmount()}
                     onClose={() => setSelectedAsset(null)}
                     onConfirm={handleAction}
                     calculateProjectedHealthFactor={(amount, action) => calculateProjectedHF(amount, action, selectedAsset.asset)}

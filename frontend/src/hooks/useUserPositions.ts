@@ -3,6 +3,7 @@
 import { useAccount, useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
 import { contracts } from '@/lib/contracts';
+import { useMarkets } from './useMarkets';
 
 export interface UserPosition {
   asset: `0x${string}`;
@@ -22,6 +23,7 @@ interface RawUserPosition {
 
 export function useUserPositions() {
   const { address, isConnected } = useAccount();
+  const { markets } = useMarkets();
 
   const { data, isLoading, error, refetch } = useReadContract({
     address: contracts.uiDataProvider.address,
@@ -37,22 +39,27 @@ export function useUserPositions() {
     },
   });
 
-  // We need decimals from markets to properly format - for now assume 18
-  // In production, you'd cross-reference with useMarkets
+  // Build a decimals lookup from market data
+  const decimalsMap = new Map(markets.map((m) => [m.asset.toLowerCase(), m.decimals]));
+
   const positions: UserPosition[] = data
     ? (data as RawUserPosition[])
-      .filter((p) => p.suppliedBalance > 0n || p.borrowedBalance > 0n)
-      .map((position) => ({
-        asset: position.asset,
-        symbol: position.symbol,
-        suppliedAmount: Number(formatUnits(position.suppliedBalance, 18)), // TODO: Get actual decimals
-        borrowedAmount: Number(formatUnits(position.borrowedBalance, 18)),
-        isCollateral: position.isCollateral,
-      }))
+      .filter((p) => p.suppliedBalance > BigInt(0) || p.borrowedBalance > BigInt(0))
+      .map((position) => {
+        const decimals = decimalsMap.get(position.asset.toLowerCase()) ?? 18;
+        return {
+          asset: position.asset,
+          symbol: position.symbol,
+          suppliedAmount: Number(formatUnits(position.suppliedBalance, decimals)),
+          borrowedAmount: Number(formatUnits(position.borrowedBalance, decimals)),
+          isCollateral: position.isCollateral,
+        };
+      })
     : [];
 
   return {
     positions,
+    userPositions: positions,
     isLoading,
     error,
     refetch,

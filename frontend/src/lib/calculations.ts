@@ -37,9 +37,22 @@ export const calculateHealthFactor = (
     // Avoid division by zero
     const healthFactor = totalDebtUSD === 0 ? 100 : totalCollateralWeighted / totalDebtUSD;
 
-    // Calculate Net APY (Simplified)
-    // (SupplyIncome - BorrowCost) / TotalEquity
-    // Equity = Supply - Debt (roughly)
+    // Calculate Net APY: (supplyIncome - borrowCost) / equity
+    let supplyIncome = 0;
+    let borrowCost = 0;
+
+    positions.forEach((pos) => {
+        const market = markets.find((m) => m.symbol === pos.symbol);
+        if (!market) return;
+
+        if (pos.isCollateral) {
+            supplyIncome += (pos.suppliedAmount * market.price) * market.supplyAPY;
+        }
+        borrowCost += (pos.borrowedAmount * market.price) * market.borrowAPY;
+    });
+
+    const equity = totalCollateralUSD - totalDebtUSD;
+    const netAPY = equity > 0 ? (supplyIncome - borrowCost) / equity : 0;
 
     // Borrow Power Used
     const maxBorrow = positions.reduce((acc, pos) => {
@@ -76,7 +89,7 @@ export const calculateHealthFactor = (
         healthFactor,
         totalCollateralUSD,
         totalDebtUSD,
-        netAPY: 0.045, // Placeholder/Simplified
+        netAPY,
         borrowPowerUsed,
         liquidationPrice: liquidationPrice > 0 ? liquidationPrice : undefined
     };

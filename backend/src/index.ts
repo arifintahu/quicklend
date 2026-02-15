@@ -9,6 +9,7 @@ import { marketsRoutes } from './api/routes/markets.js';
 import { usersRoutes } from './api/routes/users.js';
 import { analyticsRoutes } from './api/routes/analytics.js';
 import { healthRoutes } from './api/routes/health.js';
+import { EventIndexer } from './indexer/indexer.js';
 
 async function buildServer() {
     const fastify = Fastify({
@@ -104,13 +105,28 @@ buildServer().then((server) => {
             server.log.error(err);
             process.exit(1);
         }
-        server.log.info(`🚀 QuickLend API running at ${address}`);
-        server.log.info(`📚 API docs at ${address}/docs`);
-        server.log.info(`🔗 Chain ID: ${config.chainId}`);
+        server.log.info(`QuickLend API running at ${address}`);
+        server.log.info(`API docs at ${address}/docs`);
+        server.log.info(`Chain ID: ${config.chainId}`);
+
+        // Start the event indexer
+        const indexer = new EventIndexer();
         if (config.lendingPoolAddress) {
-            server.log.info(`📝 LendingPool: ${config.lendingPoolAddress}`);
+            server.log.info(`LendingPool: ${config.lendingPoolAddress}`);
+            indexer.start().catch((err) => {
+                server.log.error({ err }, 'Failed to start indexer');
+            });
+
+            // Graceful shutdown
+            const shutdown = async () => {
+                await indexer.stop();
+                await server.close();
+                process.exit(0);
+            };
+            process.on('SIGINT', shutdown);
+            process.on('SIGTERM', shutdown);
         } else {
-            server.log.warn('⚠️  Contracts not configured. Set LENDING_POOL_ADDRESS');
+            server.log.warn('Contracts not configured. Set LENDING_POOL_ADDRESS');
         }
     });
 }).catch((err) => {
