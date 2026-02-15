@@ -23,8 +23,7 @@ export default function MarketsPage() {
 
   // Filter Markets
   const filteredMarkets = markets.filter(m => 
-    m.asset.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    m.asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    m.symbol.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (

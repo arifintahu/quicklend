@@ -1,0 +1,113 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: quicklend
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: ["anvil", "--host", "0.0.0.0"]
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test: ["CMD-SHELL", "cast chain-id --rpc-url http://localhost:8545 || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  deployer:
+    image: ghcr.io/foundry-rs/foundry:latest
+    user: root
+    working_dir: /app
+    volumes:
+      - ./smart-contract:/app
+      - contract-artifacts:/artifacts
+      - ./scripts/deploy-and-extract.sh:/deploy.sh
+    entrypoint: ["sh", "/deploy.sh"]
+    depends_on:
+      anvil:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - contract-artifacts:/artifacts
+    environment:
+      PORT: "3001"
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/quicklend
+      REDIS_URL: redis://redis:6379
+      RPC_URL: http://anvil:8545
+      CHAIN_ID: "31337"
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      deployer:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - contract-artifacts:/artifacts
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    depends_on:
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  e2e:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.e2e
+    environment:
+      E2E_BASE_URL: http://frontend:3000
+      CI: "true"
+    volumes:
+      - ./frontend/e2e-results:/app/test-results
+    depends_on:
+      frontend:
+        condition: service_healthy
+    profiles:
+      - e2e
+
+volumes:
+  pgdata:
+  contract-artifacts:

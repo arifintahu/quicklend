@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Script} from "forge-std/Script.sol";
 import {LendingPool} from "../src/core/LendingPool.sol";
 import {InterestRateModel} from "../src/core/InterestRateModel.sol";
+import {UiPoolDataProvider} from "../src/periphery/UiPoolDataProvider.sol";
 import {MockPriceOracle} from "../src/mocks/MockPriceOracle.sol";
 import {MockERC20} from "../src/mocks/MockERC20.sol";
 
@@ -20,12 +21,15 @@ contract DeployScript is Script {
         MockPriceOracle oracle = new MockPriceOracle();
         LendingPool pool = new LendingPool(address(oracle));
 
-        // 2. Deploy Mocks (Assets)
+        // 2. Deploy Periphery
+        UiPoolDataProvider uiDataProvider = new UiPoolDataProvider();
+
+        // 3. Deploy Mocks (Assets)
         MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
         MockERC20 weth = new MockERC20("Wrapped Ether", "WETH", 18);
         MockERC20 wbtc = new MockERC20("Wrapped Bitcoin", "WBTC", 8);
 
-        // 3. Init Markets
+        // 4. Init Markets
         // USDC: Stable -> High LTV (80%), Liq (85%)
         pool.initMarket(
             address(usdc),
@@ -59,7 +63,7 @@ contract DeployScript is Script {
             "qWBTC"
         );
 
-        // 4. Setup Oracle Prices (Initial Mock Prices)
+        // 5. Setup Oracle Prices (Initial Mock Prices)
         oracle.setPrice(address(usdc), 1e18); // $1
         oracle.setPrice(address(weth), 2500e18); // $2500
         oracle.setPrice(address(wbtc), 45000e18); // $45000

@@ -1,12 +1,23 @@
-import { useStore } from '@/store/useStore';
+'use client';
 
-export const useWallet = () => {
-  const { isConnected, address, connectWallet, disconnectWallet } = useStore();
-  
+import { useAccount, useDisconnect } from 'wagmi';
+import { useConnectModal, useAccountModal } from '@rainbow-me/rainbowkit';
+
+export function useWallet() {
+  const { address, isConnected, isConnecting, isReconnecting } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { openAccountModal } = useAccountModal();
+  const { disconnect } = useDisconnect();
+
   return {
-    isConnected,
     address,
-    connect: connectWallet,
-    disconnect: disconnectWallet
+    isConnected,
+    isConnecting: isConnecting || isReconnecting,
+    openConnectModal,
+    openAccountModal,
+    disconnect,
+    displayAddress: address
+      ? `${address.slice(0, 6)}...${address.slice(-4)}`
+      : null,
   };
-};
+}

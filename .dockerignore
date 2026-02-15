@@ -1,0 +1,8 @@
+node_modules
+.next
+dist
+smart-contract/out
+smart-contract/cache
+*.log
+.env
+.env.local

@@ -4,26 +4,26 @@ import React from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { GlassCard } from '@/components/atoms/GlassCard';
-import { Button } from '@/components/atoms/Button';
+
 import { useMarkets } from '@/hooks/useMarkets';
 import { useUserPositions } from '@/hooks/useUserPositions';
-import { useProtocolHealth } from '@/hooks/useProtocolHealth';
+import { calculateHealthFactor } from '@/lib/calculations';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Coins, TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock } from 'lucide-react';
 
 export default function PortfolioPage() {
   const { markets } = useMarkets();
   const { userPositions } = useUserPositions();
-  const healthData = useProtocolHealth();
+  const healthData = calculateHealthFactor(markets, userPositions);
 
   // Filter Positions
   const suppliedAssets = userPositions.filter(p => p.suppliedAmount > 0);
   const borrowedAssets = userPositions.filter(p => p.borrowedAmount > 0);
 
-  // Mock Earnings Calc
-  const dailyEarnings = 12.50; // Mocked
-  const monthlyEarnings = dailyEarnings * 30;
+  // Calculate daily earnings from positions
+  const netWorth = healthData.totalCollateralUSD - healthData.totalDebtUSD;
+  const dailyEarnings = netWorth > 0 ? (netWorth * healthData.netAPY) / 365 : 0;
 
   return (
     <>
@@ -51,15 +51,14 @@ export default function PortfolioPage() {
             <GlassCard className="flex flex-col justify-center relative overflow-hidden group">
                 <div className="flex justify-between items-start">
                     <div>
-                        <div className="text-gray-400 text-sm mb-1">Claimable Rewards</div>
-                        <div className="text-3xl font-mono font-bold text-[#FFB800]">
-                            142.50 <span className="text-sm text-gray-500">QUICK</span>
+                        <div className="text-gray-400 text-sm mb-1">Rewards</div>
+                        <div className="text-xl font-mono font-bold text-gray-500">
+                            Coming Soon
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">≈ $42.10</div>
+                        <div className="text-xs text-gray-500 mt-1">Reward program not yet active</div>
                     </div>
-                    <Button size="sm" variant="secondary" className="px-4">Claim</Button>
                 </div>
-                <Coins className="absolute -bottom-4 -right-4 text-[#FFB800]/10 w-24 h-24 rotate-12 group-hover:rotate-45 transition-transform" />
+                <Clock className="absolute -bottom-4 -right-4 text-gray-600/10 w-24 h-24 rotate-12 group-hover:rotate-45 transition-transform" />
             </GlassCard>
         </div>
 
@@ -86,15 +85,15 @@ export default function PortfolioPage() {
                         </thead>
                         <tbody>
                             {suppliedAssets.map(pos => {
-                                const market = markets.find(m => m.asset.symbol === pos.assetSymbol);
+                                const market = markets.find(m => m.symbol === pos.symbol);
                                 if (!market) return null;
                                 return (
-                                    <tr key={pos.assetSymbol} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                    <tr key={pos.symbol} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                         <td className="p-4 flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold">
-                                                {pos.assetSymbol[0]}
+                                                {pos.symbol[0]}
                                             </div>
-                                            <span className="font-bold">{pos.assetSymbol}</span>
+                                            <span className="font-bold">{pos.symbol}</span>
                                         </td>
                                         <td className="p-4 text-right font-mono">
                                             <div>{pos.suppliedAmount}</div>
@@ -138,15 +137,15 @@ export default function PortfolioPage() {
                         </thead>
                         <tbody>
                             {borrowedAssets.map(pos => {
-                                const market = markets.find(m => m.asset.symbol === pos.assetSymbol);
+                                const market = markets.find(m => m.symbol === pos.symbol);
                                 if (!market) return null;
                                 return (
-                                    <tr key={pos.assetSymbol} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                    <tr key={pos.symbol} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                         <td className="p-4 flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold">
-                                                {pos.assetSymbol[0]}
+                                                {pos.symbol[0]}
                                             </div>
-                                            <span className="font-bold">{pos.assetSymbol}</span>
+                                            <span className="font-bold">{pos.symbol}</span>
                                         </td>
                                         <td className="p-4 text-right font-mono">
                                             <div>{pos.borrowedAmount}</div>

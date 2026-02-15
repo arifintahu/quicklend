@@ -1,44 +1,131 @@
-import { useStore } from '@/store/useStore';
-import { useCallback, useState } from 'react';
+'use client';
 
-export const useLendingActions = () => {
-  const { supply, borrow, withdraw, repay, toggleCollateral } = useStore();
-  const [isPending, setIsPending] = useState(false);
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { parseUnits } from 'viem';
+import { contracts } from '@/lib/contracts';
 
-  // Helper to simulate network delay
-  const withDelay = async (action: () => void) => {
-    setIsPending(true);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1s fake delay
-    action();
-    setIsPending(false);
+export function useLendingActions() {
+  const { address } = useAccount();
+
+  const {
+    data: txHash,
+    writeContract,
+    isPending,
+    error: writeError,
+    reset,
+  } = useWriteContract();
+
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    error: confirmError,
+  } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  const supply = async (asset: `0x${string}`, amount: string, decimals: number = 18) => {
+    if (!contracts.lendingPool.address) throw new Error('LendingPool not configured');
+
+    const parsedAmount = parseUnits(amount, decimals);
+
+    writeContract({
+      address: contracts.lendingPool.address,
+      abi: contracts.lendingPool.abi,
+      functionName: 'supply',
+      args: [asset, parsedAmount],
+    });
   };
 
-  const supplyAsset = useCallback(async (assetSymbol: string, amount: number) => {
-    await withDelay(() => supply(assetSymbol, amount));
-  }, [supply]);
+  const withdraw = async (asset: `0x${string}`, amount: string, decimals: number = 18) => {
+    if (!contracts.lendingPool.address) throw new Error('LendingPool not configured');
 
-  const borrowAsset = useCallback(async (assetSymbol: string, amount: number) => {
-    await withDelay(() => borrow(assetSymbol, amount));
-  }, [borrow]);
+    const parsedAmount = parseUnits(amount, decimals);
 
-  const withdrawAsset = useCallback(async (assetSymbol: string, amount: number) => {
-    await withDelay(() => withdraw(assetSymbol, amount));
-  }, [withdraw]);
+    writeContract({
+      address: contracts.lendingPool.address,
+      abi: contracts.lendingPool.abi,
+      functionName: 'withdraw',
+      args: [asset, parsedAmount],
+    });
+  };
 
-  const repayAsset = useCallback(async (assetSymbol: string, amount: number) => {
-    await withDelay(() => repay(assetSymbol, amount));
-  }, [repay]);
+  const borrow = async (asset: `0x${string}`, amount: string, decimals: number = 18) => {
+    if (!contracts.lendingPool.address) throw new Error('LendingPool not configured');
 
-  const toggleAssetCollateral = useCallback(async (assetSymbol: string) => {
-    await withDelay(() => toggleCollateral(assetSymbol));
-  }, [toggleCollateral]);
+    const parsedAmount = parseUnits(amount, decimals);
+
+    writeContract({
+      address: contracts.lendingPool.address,
+      abi: contracts.lendingPool.abi,
+      functionName: 'borrow',
+      args: [asset, parsedAmount],
+    });
+  };
+
+  const repay = async (asset: `0x${string}`, amount: string, decimals: number = 18) => {
+    if (!contracts.lendingPool.address) throw new Error('LendingPool not configured');
+
+    const parsedAmount = parseUnits(amount, decimals);
+
+    writeContract({
+      address: contracts.lendingPool.address,
+      abi: contracts.lendingPool.abi,
+      functionName: 'repay',
+      args: [asset, parsedAmount],
+    });
+  };
+
+  const setCollateral = async (asset: `0x${string}`, useAsCollateral: boolean) => {
+    if (!contracts.lendingPool.address) throw new Error('LendingPool not configured');
+
+    writeContract({
+      address: contracts.lendingPool.address,
+      abi: contracts.lendingPool.abi,
+      functionName: 'setUserUseReserveAsCollateral',
+      args: [asset, useAsCollateral],
+    });
+  };
+
+  const liquidate = async (
+    collateralAsset: `0x${string}`,
+    borrowAsset: `0x${string}`,
+    user: `0x${string}`,
+    debtToCover: string,
+    decimals: number = 18
+  ) => {
+    if (!contracts.lendingPool.address) throw new Error('LendingPool not configured');
+
+    const parsedDebt = parseUnits(debtToCover, decimals);
+
+    writeContract({
+      address: contracts.lendingPool.address,
+      abi: contracts.lendingPool.abi,
+      functionName: 'liquidate',
+      args: [collateralAsset, borrowAsset, user, parsedDebt],
+    });
+  };
 
   return {
-    supply: supplyAsset,
-    borrow: borrowAsset,
-    withdraw: withdrawAsset,
-    repay: repayAsset,
-    toggleCollateral: toggleAssetCollateral,
-    isPending
+    // Actions
+    supply,
+    withdraw,
+    borrow,
+    repay,
+    setCollateral,
+    liquidate,
+
+    // Transaction state
+    txHash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error: writeError || confirmError,
+
+    // Reset state for new transaction
+    reset,
+
+    // Connection
+    isConnected: !!address,
+    address,
   };
-};
+}
