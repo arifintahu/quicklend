@@ -43,8 +43,8 @@ services:
     volumes:
       - ./smart-contract:/app
       - contract-artifacts:/artifacts
-      - ./scripts/deploy-and-extract.sh:/deploy.sh
-    entrypoint: ["sh", "/deploy.sh"]
+      - ./scripts:/scripts
+    entrypoint: ["sh", "/scripts/deploy-and-extract.sh"]
     depends_on:
       anvil:
         condition: service_healthy
