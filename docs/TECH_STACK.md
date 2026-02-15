@@ -2,70 +2,67 @@
 
 ## 1. Core Blockchain Layer (Smart Contracts)
 
-The "engine room" of the protocol. We prioritize security, gas efficiency, and EVM compatibility.
-
 * **Language:** **Solidity (^0.8.20)** — Utilizing the latest stable version for built-in overflow checks and optimized `via-ir` compilation.
-* **Development Framework:** **Foundry** — Chosen over Hardhat for its Rust-based speed and the ability to write unit tests in Solidity, ensuring developers don't have to switch contexts between JS/TS and Smart Contracts.
-* **Libraries:** **OpenZeppelin** — For industry-standard implementations of `ERC20`, `Ownable`, `ReentrancyGuard`, and `Initializable` (for UUPS proxy patterns).
-* **Math Logic:** **FixedPointMathLib (Solady)** — An gas-optimized math library for handling "Ray" (27 decimal) and "Wad" (18 decimal) precision.
+* **Development Framework:** **Foundry** — Chosen over Hardhat for its Rust-based speed and the ability to write unit tests in Solidity.
+* **Libraries:** **OpenZeppelin** — For industry-standard implementations of `ERC20`, `Ownable`, `ReentrancyGuard`, and `Pausable`.
+* **Math Logic:** **FixedPointMathLib (Solady)** — Gas-optimized math library for handling Wad (18 decimal) precision.
 
 ---
 
 ## 2. Infrastructure & Data Layer
 
-The bridge between the blockchain and the user interface.
-
-* **Oracle Provider:** **Chainlink Data Feeds** — The gold standard for secure, decentralized price discovery.
-* **Indexing:** **The Graph (Subgraphs)** — Used to index protocol events (`Supply`, `Borrow`, `Liquidate`) for fast, queryable access to historical user data and global TVL.
-* **RPC Providers:** **Alchemy** or **Infura** — For reliable node connectivity during deployment and frontend interactions.
-* **Storage (Metadata):** **IPFS / Pinata** — To host decentralized versions of the Design System assets and frontend builds (ensuring censorship resistance).
+* **Oracle Provider:** **MockPriceOracle** (local development) — Pluggable interface for Chainlink in production.
+* **Indexing:** **Custom event indexer** — Fastify-based service that backfills historical events and watches for new ones in real-time. Materializes `userPositions`, `marketSnapshots`, and `liquidationLogs` into PostgreSQL.
+* **Database:** **PostgreSQL 16** — Stores indexed events, user positions, market snapshots, and notification preferences via Drizzle ORM.
+* **Cache:** **Redis 7** — Caches market API responses with 30-second TTL.
+* **RPC:** **Anvil** (local development) — Deterministic local EVM chain on port 8545.
 
 ---
 
 ## 3. Frontend & User Interface
 
-A modern, high-performance stack that aligns with our "Velocity & Veracity" philosophy.
-
-* **Framework:** **Next.js 14+ (App Router)** — For server-side rendering (SSR) of market data and fast page transitions.
-* **State Management:** **TanStack Query (React Query)** — To handle the caching and synchronization of blockchain data.
-* **Blockchain Hooks:** **Wagmi & Viem** — A lightweight, type-safe alternative to Ethers.js for wallet connections and contract interactions.
-* **Wallet Connectivity:** **RainbowKit** — Provides a world-class, customizable UI for connecting user wallets.
-* **Styling:** **Tailwind CSS** + **Framer Motion** — Tailwind for rapid UI development; Framer Motion for the sleek "Glassmorphic" transitions and the Health Dial animations.
-
----
-
-## 4. Architecture Overview Diagram
+* **Framework:** **Next.js 16 (App Router)** — Server-side rendering with React 19 and TypeScript.
+* **State Management:** **TanStack Query (React Query)** — Handles caching and synchronization of blockchain and API data.
+* **Blockchain Hooks:** **Wagmi v2 & Viem v2** — Type-safe React hooks for wallet connections and contract interactions.
+* **Wallet Connectivity:** **RainbowKit v2** — Wallet connection modal with dark theme customization.
+* **Styling:** **Tailwind CSS v4** + **Framer Motion** — Tailwind for rapid UI development; Framer Motion for glassmorphic transitions and Health Dial animations.
+* **Component Architecture:** Atomic design — `atoms/`, `molecules/`, `organisms/`, `templates/`.
 
 ---
 
-## 5. Security & DevSecOps
+## 4. Backend & API Layer
 
-* **Static Analysis:** **Slither** and **Aderyn** — To catch common vulnerabilities (reentrancy, uninitialized contracts) during the CI/CD pipeline.
-* **Formal Verification:** **Certora** or **Kontrol** — For verifying the mathematical correctness of the Interest Rate Model.
-* **Testing Suite:**
-* **Unit Tests:** Foundry (100% branch coverage target).
-* **Integration Tests:** Mainnet Forking (Foundry `anvil` or `forge test --fork-url`).
-* **Invariants:** Fuzz testing with `foundry` to ensure the Health Factor logic never breaks under extreme edge cases.
-
-
+* **Runtime:** **Node.js 20** with TypeScript (ESM).
+* **Framework:** **Fastify 5** — High-performance REST API with Swagger docs at `/docs`.
+* **ORM:** **Drizzle ORM** — Type-safe SQL with migration support (`db:generate`, `db:migrate`).
+* **Validation:** **@sinclair/typebox** — JSON schema validation on API routes.
+* **API Routes:** `health`, `markets`, `users`, `analytics`.
 
 ---
 
-## 6. Deployment & CI/CD
+## 5. Testing
 
-* **CI/CD:** **GitHub Actions** — Automates contract linting, testing, and documentation generation (Docgen).
-* **Frontend Hosting:** **Vercel** — For high-speed global delivery of the dashboard.
-* **Monitoring:** **Defender (OpenZeppelin)** — For real-time monitoring of large transactions, liquidations, and admin-governance actions.
+* **Smart Contracts:** **Foundry** — Unit tests, fuzz testing, gas reports, coverage.
+* **Frontend Unit Tests:** **Vitest** + **React Testing Library** — Component and hook testing with happy-dom.
+* **Frontend E2E Tests:** **Playwright** — Chromium-based browser testing against the running application.
+* **Docker E2E:** Playwright runs inside Docker against the full stack via `make e2e`.
+
+---
+
+## 6. DevOps & Deployment
+
+* **Containerization:** **Docker Compose** — Full-stack sandbox with 6 services (Anvil, PostgreSQL, Redis, deployer, backend, frontend).
+* **Orchestration:** **Makefile** — `make up`, `make down`, `make e2e`, `make logs`, `make deploy`, `make clean`.
+* **CI/CD:** **GitHub Actions** — Automates linting, testing, and deployment.
+* **Frontend Hosting:** **Vercel** — For production deployment.
 
 ### Summary Table
 
 | Category | Technology |
 | --- | --- |
 | **Language** | Solidity / TypeScript |
-| **Testing** | Foundry |
-| **Oracle** | Chainlink |
-| **Indexing** | The Graph |
-| **Frontend** | Next.js / Tailwind / Wagmi |
-| **Deployment** | Vercel / GitHub Actions |
-
-Would you like me to generate the **`foundry.toml` configuration** and the **initial folder structure** for the project repository?
+| **Contracts** | Foundry / OpenZeppelin / Solady |
+| **Frontend** | Next.js 16 / React 19 / Tailwind CSS v4 / Wagmi v2 |
+| **Backend** | Fastify 5 / Drizzle ORM / PostgreSQL / Redis |
+| **Testing** | Foundry / Vitest / Playwright |
+| **DevOps** | Docker Compose / Makefile / GitHub Actions |

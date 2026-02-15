@@ -24,7 +24,7 @@ const timeAgo = (date: string) => {
 
 export const Navbar = () => {
     const pathname = usePathname();
-    const { isConnected, address, connect, disconnect, connectors } = useWallet();
+    const { isConnected, address, displayAddress, openConnectModal, disconnect } = useWallet();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]); // Initialize empty
@@ -43,11 +43,7 @@ export const Navbar = () => {
     };
 
     const handleConnect = () => {
-        // Simple connector selection for now
-        const connector = connectors[0];
-        if (connector) {
-            connect({ connector });
-        }
+        openConnectModal?.();
     };
 
     const handleDisconnect = () => {
@@ -151,7 +147,7 @@ export const Navbar = () => {
                                     0x
                                 </div>
                                 <div className="text-left hidden md:block">
-                                    <div className="text-sm font-bold text-white">{address}</div>
+                                    <div className="text-sm font-bold text-white">{displayAddress}</div>
                                     <div className="text-[10px] text-gray-400">Ethereum</div>
                                 </div>
                                 <ChevronDown size={16} className="text-gray-400" />
