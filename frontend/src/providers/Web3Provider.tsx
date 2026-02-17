@@ -4,7 +4,7 @@ import { ReactNode, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
-import { wagmiConfig } from '@/lib/wagmi';
+import { wagmiConfig, localChain } from '@/lib/wagmi';
 
 import '@rainbow-me/rainbowkit/styles.css';
 
@@ -36,6 +36,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
                         fontStack: 'system',
                         overlayBlur: 'small',
                     })}
+                    initialChain={localChain}
                     modalSize="compact"
                 >
                     {children}

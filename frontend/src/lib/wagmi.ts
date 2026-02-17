@@ -27,6 +27,8 @@ const localChain: Chain = {
     : {}),
 };
 
+export { localChain };
+
 export const wagmiConfig = getDefaultConfig({
   appName: 'QuickLend',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'd419fa909b9a2764bfa119296674f667',

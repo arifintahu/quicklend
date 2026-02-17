@@ -24,7 +24,7 @@ const timeAgo = (date: string) => {
 
 export const Navbar = () => {
     const pathname = usePathname();
-    const { isConnected, address, displayAddress, openConnectModal, disconnect } = useWallet();
+    const { isConnected, address, displayAddress, openConnectModal, disconnect, chain } = useWallet();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]); // Initialize empty
@@ -148,7 +148,7 @@ export const Navbar = () => {
                                 </div>
                                 <div className="text-left hidden md:block">
                                     <div className="text-sm font-bold text-white">{displayAddress}</div>
-                                    <div className="text-[10px] text-gray-400">Ethereum</div>
+                                    <div className="text-[10px] text-gray-400">{chain?.name || 'Unknown Network'}</div>
                                 </div>
                                 <ChevronDown size={16} className="text-gray-400" />
                             </motion.button>
