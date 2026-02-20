@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, BarChart2, TrendingUp, Users } from "lucide-react";
+import { DollarSign, BarChart2, TrendingUp, Layers } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -34,9 +34,9 @@ const FALLBACK_STATS: Stat[] = [
     color: "text-[#FFB800]",
   },
   {
-    label: "Total Suppliers",
-    value: "—",
-    icon: Users,
+    label: "Supported Assets",
+    value: "3",
+    icon: Layers,
     color: "text-[#00C6FF]",
   },
 ];
@@ -91,9 +91,9 @@ export default function StatsSection() {
             color: "text-[#FFB800]",
           },
           {
-            label: "Total Suppliers",
-            value: "—",
-            icon: Users,
+            label: "Supported Assets",
+            value: String(markets.length),
+            icon: Layers,
             color: "text-[#00C6FF]",
           },
         ]);
