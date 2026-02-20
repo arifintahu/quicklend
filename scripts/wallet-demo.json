@@ -1,0 +1,85 @@
+{
+  "wallets": [
+    {
+      "name": "Deployer / Test User",
+      "privateKey": "0x8b2c4a81c46b0f8a1b01f9e174808182a0c992d7a64630be6fc02dbe17b15c94",
+      "address": "0x43A23501517E287Bf807dB328dd43A9e07a968b6",
+      "minting": [
+        { "token": "USDC", "amount": "1000000000000" },
+        { "token": "WETH", "amount": "100000000000000000000" },
+        { "token": "WBTC", "amount": "1000000000" }
+      ],
+      "supplies": [
+        { "token": "WETH", "amount": "10000000000000000000" },
+        { "token": "WBTC", "amount": "50000000" }
+      ],
+      "borrows": [
+        { "token": "USDC", "amount": "5000000000" }
+      ]
+    },
+    {
+      "name": "LP 1 (USDC)",
+      "privateKey": "0xeb7811a4a1b21c5e096425c7d5e1c7a0fb342d4817acd62cbbf2d2e533d9b329",
+      "address": "0xe9d32Bc4574DfA87EE1A233A37dB373BbE52e2f1",
+      "minting": [
+        { "token": "USDC", "amount": "500000000000" }
+      ],
+      "supplies": [
+        { "token": "USDC", "amount": "500000000000" }
+      ],
+      "borrows": []
+    },
+    {
+      "name": "LP 2 (WETH)",
+      "privateKey": "0x1bf2e8f6e90a046ecdbd86a5b774a27fa4ad5d6a34a866356bdb08850eeee831",
+      "address": "0x2C29127d53066A3AdEb2C06fa63c6C432C6A8B38",
+      "minting": [
+        { "token": "WETH", "amount": "200000000000000000000" }
+      ],
+      "supplies": [
+        { "token": "WETH", "amount": "200000000000000000000" }
+      ],
+      "borrows": []
+    },
+    {
+      "name": "LP 3 (WBTC)",
+      "privateKey": "0xccd78644eff3991708fe32b0b4ad80633de53dde3d66783411d332599d22040e",
+      "address": "0xb1c9D01038F005C0fc47d340bEfACb04aB35f51A",
+      "minting": [
+        { "token": "WBTC", "amount": "1100000000" }
+      ],
+      "supplies": [
+        { "token": "WBTC", "amount": "1100000000" }
+      ],
+      "borrows": []
+    },
+    {
+      "name": "User 1",
+      "privateKey": "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a",
+      "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minting": [
+        { "token": "USDC", "amount": "10000000000" },
+        { "token": "WETH", "amount": "2000000000000000000" },
+        { "token": "WBTC", "amount": "11000000" }
+      ],
+      "supplies": [
+        { "token": "USDC", "amount": "1000000000" }
+      ],
+      "borrows": [
+        { "token": "WBTC", "amount": "110000" }
+      ]
+    },
+    {
+      "name": "User 2",
+      "privateKey": "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba",
+      "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+      "minting": [
+        { "token": "USDC", "amount": "10000000000" },
+        { "token": "WETH", "amount": "2000000000000000000" },
+        { "token": "WBTC", "amount": "11000000" }
+      ],
+      "supplies": [],
+      "borrows": []
+    }
+  ]
+}
