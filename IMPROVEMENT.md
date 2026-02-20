@@ -17,13 +17,13 @@ The table below scores the current state against the stated vision:
 | Dimension | Score | Notes |
 |---|---|---|
 | Visual Design | 8/10 | Strong glassmorphism, consistent palette, good motion |
-| New-User Onboarding | 2/10 | No landing page, no tooltips, no guided flow |
+| New-User Onboarding | 4/10 | Landing page provides entry point; in-app guided flow still missing |
 | DeFi Literacy Support | 1/10 | Jargon everywhere, zero explanations |
 | Core User Flow (Supply) | 6/10 | Works but lacks feedback, icons, and contextual help |
 | Core User Flow (Borrow) | 5/10 | Works, but withdraw/repay share modal with bugs |
 | Mobile UX | 4/10 | Sidebar collapses, no bottom nav, not touch-optimised |
-| Trust & Safety Signals | 3/10 | No audit badges, no TVL hero, no risk explainer |
-| Product Marketing | 2/10 | No landing page, no value proposition visible |
+| Trust & Safety Signals | 6/10 | Landing page has audit/security section, TVL stats, non-custodial claim |
+| Product Marketing | 7/10 | Standalone landing page with hero, features, stats, USPs, comparison, security, CTA |
 
 ---
 
@@ -51,19 +51,24 @@ Real-time indexing, 30s-TTL market cache, event materialization, and Swagger-doc
 
 ## Part 2: Critical Gaps vs. the New-User Vision
 
-### 2.1 No Landing / Marketing Page ❌ HIGH PRIORITY
+### 2.1 ~~No Landing / Marketing Page~~ ✅ IMPLEMENTED
 
-**Problem:** When an unauthenticated user visits the app, they land directly on the Dashboard — a wall of numbers with a "Connect Wallet" prompt. There is no explanation of what QuickLend is, what they can do, or why they should trust it.
+**Status:** A standalone `landing-page/` Next.js project has been built and covers all originally recommended content:
 
-**Impact:** A user unfamiliar with DeFi will immediately bounce. Even a crypto-savvy user has no reason to trust an unnamed protocol with no stated TVL, no security claims, and no social proof.
+| Recommended | Implemented |
+|---|---|
+| Hero: value proposition + CTA | `HeroSection.tsx` — tagline + "Start Earning" CTA |
+| Three-column feature highlights | `FeaturesSection.tsx` — Supply/Earn, Borrow/Spend, Safe/Audited |
+| Live protocol stats (TVL, markets, APY) | `StatsSection.tsx` — TVL, total markets, current best APY |
+| "How it works" — three steps | `HowItWorksSection.tsx` — illustrated step-by-step |
+| Audience-targeted messaging | `AudienceSection.tsx` — HODLers, stablecoin holders, power users, newcomers |
+| Unique selling points | `USPSection.tsx` — HF preview, speed, non-custodial, multi-asset |
+| Competitive comparison | `ComparisonSection.tsx` — QuickLend vs Aave vs Compound |
+| Security section (audit, open-source, non-custodial) | `SecuritySection.tsx` |
+| Final call-to-action banner | `CTABanner.tsx` |
+| Footer with social, docs, terms | `Footer.tsx` |
 
-**Recommendation:** Create a dedicated landing page (`/landing` or a conditional homepage wrapper for unauthenticated users) with:
-- Hero: One-sentence value proposition + "Start Earning" CTA
-- Three-column feature highlights: Supply → Earn, Borrow → Spend, Safe → Audited
-- Live protocol stats: Total Value Locked, total markets, current best APY
-- "How it works" — three steps with illustrations
-- Security section: audit status, open-source link, non-custodial claim
-- Footer: social links, docs, terms
+**Remaining gap:** The main frontend app (`frontend/`) still drops unauthenticated users directly on the Dashboard. Consider routing unauthenticated visitors to the landing page or embedding a lightweight hero within the app's connect-wallet prompt.
 
 ---
 
@@ -259,8 +264,8 @@ These values never change regardless of position size or asset.
 [New User Arrives]
         │
         ▼
-   Landing Page    ← MISSING: No value prop, no features, no trust signals
-        │
+   Landing Page    ← DONE: Standalone landing-page/ with hero, stats, features,
+        │              how-it-works, audience, USPs, comparison, security, CTA, footer
         ▼
    Connect Wallet  ← OK: RainbowKit covers this well
         │
@@ -357,7 +362,7 @@ Position QuickLend against Aave and Compound with:
 6. **[TRUST]** Implement "Copy Address" and "View on Etherscan" wallet menu items
 
 ### Sprint 2 — Onboarding & Discovery
-7. **[NEW]** Build unauthenticated landing page with value proposition, protocol stats, and "How it works"
+7. ~~**[NEW]** Build unauthenticated landing page with value proposition, protocol stats, and "How it works"~~ ✅ Done — `landing-page/` project implemented
 8. **[NEW]** Add first-visit onboarding checklist / welcome modal
 9. **[UX]** Replace first-letter asset placeholders with real token logos
 10. **[UX]** Add contextual empty-state CTAs with expected APY ("Earn up to X%")
@@ -371,7 +376,7 @@ Position QuickLend against Aave and Compound with:
 16. **[FEATURE]** Persist settings to localStorage; wire notification preferences to backend
 
 ### Sprint 4 — Growth & Marketing
-17. **[MARKETING]** Add TVL, audit badge, and open-source links to landing page and footer
+17. ~~**[MARKETING]** Add TVL, audit badge, and open-source links to landing page and footer~~ ✅ Done — `StatsSection`, `SecuritySection`, and `Footer` in `landing-page/` cover TVL, audit badge, and open-source links
 18. **[FEATURE]** Implement push/email notification for liquidation risk (backend already has the schema)
 19. **[FEATURE]** Add rewards/points system (currently "Coming Soon" in portfolio page)
 20. **[FEATURE]** ENS name resolution for wallet display
