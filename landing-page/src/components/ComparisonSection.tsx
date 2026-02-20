@@ -28,7 +28,8 @@ const rows: {
     feature: "New user onboarding",
     aave: "partial",
     compound: "no",
-    quicklend: "yes",
+    quicklend: "partial",
+    note: "Guided flow — roadmap",
   },
   {
     feature: "Non-custodial",
