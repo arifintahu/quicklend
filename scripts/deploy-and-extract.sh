@@ -17,6 +17,10 @@ fi
 RPC_URL="http://anvil:8545"
 WALLET_JSON="/scripts/wallet-demo.json"
 
+# Default Anvil-funded account (account #0, always pre-funded with 10000 ETH)
+ANVIL_DEFAULT_PK="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+ANVIL_DEFAULT_ADDR="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+
 # Read Deployer PK (first wallet)
 PK_0=$(jq -r '.wallets[0].privateKey' "$WALLET_JSON")
 
@@ -26,6 +30,7 @@ if [ "$PK_0" = "null" ]; then
 fi
 
 MAX_APPROVE="115792089237316195423570985008687907853269984665640564039457584007913129639935"
+FUND_AMOUNT="10000000000000000000"  # 10 ETH per wallet
 
 echo "=== Deploying contracts to Anvil ==="
 
@@ -33,7 +38,7 @@ cd /app
 
 forge script script/Deploy.s.sol:DeployScript \
     --rpc-url "$RPC_URL" \
-    --private-key "$PK_0" \
+    --private-key "$ANVIL_DEFAULT_PK" \
     --broadcast
 
 echo "=== Extracting deployed addresses ==="
@@ -55,13 +60,12 @@ extract_address() {
 LENDING_POOL=$(extract_address "LendingPool")
 UI_DATA_PROVIDER=$(extract_address "UiPoolDataProvider")
 PRICE_ORACLE=$(extract_address "MockPriceOracle")
-# MockERC20 are deployed multiple times. We need to identify them.
-# In the broadcast file, they might be listed in order.
-# The original script used `sed -n '1p'`, `2p`, `3p`.
-# We can do the same with jq results.
-USDC=$(extract_address "MockERC20" | sed -n '1p')
-WETH=$(extract_address "MockERC20" | sed -n '2p')
-WBTC=$(extract_address "MockERC20" | sed -n '3p')
+# MockERC20 is deployed 3 times (USDC, WETH, WBTC) in order.
+# Extract all addresses at once to avoid head -1 truncation.
+MOCK_TOKEN_ADDRS=$(jq -r '.transactions[] | select(.contractName == "MockERC20") | .contractAddress' "$BROADCAST_FILE")
+USDC=$(echo "$MOCK_TOKEN_ADDRS" | sed -n '1p')
+WETH=$(echo "$MOCK_TOKEN_ADDRS" | sed -n '2p')
+WBTC=$(echo "$MOCK_TOKEN_ADDRS" | sed -n '3p')
 
 echo "LendingPool:       $LENDING_POOL"
 echo "UiPoolDataProvider: $UI_DATA_PROVIDER"
@@ -90,10 +94,11 @@ NEXT_PUBLIC_WETH_ADDRESS=$WETH
 NEXT_PUBLIC_WBTC_ADDRESS=$WBTC
 EOF
 
-# Helper: send a cast transaction
+# Helper: send a cast transaction (non-fatal; seeding failures are logged but don't abort)
 tx() {
     local pk="$1"; shift
-    cast send --rpc-url "$RPC_URL" --private-key "$pk" "$@" > /dev/null 2>&1
+    cast send --rpc-url "$RPC_URL" --private-key "$pk" "$@" > /dev/null 2>&1 || \
+        echo "  Warning: transaction failed (non-fatal)"
 }
 
 get_token_addr() {
@@ -105,16 +110,21 @@ get_token_addr() {
     esac
 }
 
-echo "=== Processing Wallets from JSON ==="
-
 COUNT=$(jq '.wallets | length' "$WALLET_JSON")
+
+echo "=== Pass 1: Funding, Minting, and Supplying ==="
 i=0
 while [ "$i" -lt "$COUNT" ]; do
     NAME=$(jq -r ".wallets[$i].name" "$WALLET_JSON")
     PK=$(jq -r ".wallets[$i].privateKey" "$WALLET_JSON")
     ADDR=$(jq -r ".wallets[$i].address" "$WALLET_JSON")
-    
+
     echo "Processing Wallet #$i: $NAME ($ADDR)"
+
+    # Fund wallet with ETH from the default Anvil account
+    echo "  Funding $ADDR with ETH..."
+    cast send --rpc-url "$RPC_URL" --private-key "$ANVIL_DEFAULT_PK" \
+        --value "$FUND_AMOUNT" "$ADDR" > /dev/null 2>&1
 
     # Minting
     MINT_COUNT=$(jq ".wallets[$i].minting | length" "$WALLET_JSON")
@@ -123,7 +133,6 @@ while [ "$i" -lt "$COUNT" ]; do
         TOKEN=$(jq -r ".wallets[$i].minting[$j].token" "$WALLET_JSON")
         AMOUNT=$(jq -r ".wallets[$i].minting[$j].amount" "$WALLET_JSON")
         TOKEN_ADDR=$(get_token_addr "$TOKEN")
-        
         if [ -n "$TOKEN_ADDR" ]; then
             echo "  Minting $AMOUNT $TOKEN..."
             tx "$PK_0" "$TOKEN_ADDR" "mint(address,uint256)" "$ADDR" "$AMOUNT"
@@ -138,7 +147,6 @@ while [ "$i" -lt "$COUNT" ]; do
         TOKEN=$(jq -r ".wallets[$i].supplies[$j].token" "$WALLET_JSON")
         AMOUNT=$(jq -r ".wallets[$i].supplies[$j].amount" "$WALLET_JSON")
         TOKEN_ADDR=$(get_token_addr "$TOKEN")
-        
         if [ -n "$TOKEN_ADDR" ]; then
             echo "  Supplying $AMOUNT $TOKEN..."
             tx "$PK" "$TOKEN_ADDR" "approve(address,uint256)" "$LENDING_POOL" "$MAX_APPROVE"
@@ -147,16 +155,23 @@ while [ "$i" -lt "$COUNT" ]; do
         j=$((j + 1))
     done
 
-    # Borrows
+    i=$((i + 1))
+done
+
+echo "=== Pass 2: Borrowing (after all liquidity is supplied) ==="
+i=0
+while [ "$i" -lt "$COUNT" ]; do
+    NAME=$(jq -r ".wallets[$i].name" "$WALLET_JSON")
+    PK=$(jq -r ".wallets[$i].privateKey" "$WALLET_JSON")
+
     BORROW_COUNT=$(jq ".wallets[$i].borrows | length" "$WALLET_JSON")
     j=0
     while [ "$j" -lt "$BORROW_COUNT" ]; do
         TOKEN=$(jq -r ".wallets[$i].borrows[$j].token" "$WALLET_JSON")
         AMOUNT=$(jq -r ".wallets[$i].borrows[$j].amount" "$WALLET_JSON")
         TOKEN_ADDR=$(get_token_addr "$TOKEN")
-        
         if [ -n "$TOKEN_ADDR" ]; then
-            echo "  Borrowing $AMOUNT $TOKEN..."
+            echo "  [$NAME] Borrowing $AMOUNT $TOKEN..."
             tx "$PK" "$LENDING_POOL" "borrow(address,uint256)" "$TOKEN_ADDR" "$AMOUNT"
         fi
         j=$((j + 1))
