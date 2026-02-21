@@ -7,6 +7,7 @@ import { GlassCard } from '@/components/atoms/GlassCard';
 import { TokenIcon } from '@/components/atoms/TokenIcon';
 import { useTransactionHistory } from '@/hooks/useTransactionHistory';
 import { useMarkets } from '@/hooks/useMarkets';
+import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { ExternalLink, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -15,6 +16,12 @@ export default function HistoryPage() {
   const [page, setPage] = useState(1);
   const { history, pagination, isLoading } = useTransactionHistory(page, 20);
   const { markets } = useMarkets();
+  const { chain } = useWallet();
+
+  const getExplorerTxUrl = (hash: string) => {
+    const base = chain?.blockExplorers?.default?.url ?? 'https://etherscan.io';
+    return `${base}/tx/${hash}`;
+  };
 
   // Build a lookup: lowercase address → symbol
   const addressToSymbol = new Map(
@@ -125,9 +132,14 @@ export default function HistoryPage() {
                             {new Date(tx.timestamp).toLocaleString()}
                           </td>
                           <td className="p-6 text-right">
-                            <span className="flex items-center justify-end gap-1 text-[#00C6FF] text-sm font-mono">
+                            <a
+                              href={getExplorerTxUrl(tx.txHash)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-end gap-1 text-[#00C6FF] text-sm font-mono hover:underline hover:text-[#00C6FF]/80 cursor-pointer transition-colors"
+                            >
                               {shortenHash(tx.txHash)} <ExternalLink size={12} />
-                            </span>
+                            </a>
                           </td>
                         </tr>
                       );

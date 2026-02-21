@@ -119,7 +119,9 @@ describe('Markets Page', () => {
         render(<MarketsPage />);
 
         // USDC: 1M * $1 = $1M, WETH: 10K * $2500 = $25M -> Total = $26M
-        expect(screen.getByText('$26,000,000.00')).toBeInTheDocument();
+        // Value appears in stat card and TVL trust signal
+        const matches = screen.getAllByText('$26,000,000.00');
+        expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
     it('renders search input', () => {

@@ -67,6 +67,23 @@ npm run db:studio                    # Drizzle Studio GUI
 - **Calculations**: `lib/calculations.ts` — client-side financial math (health factor, APY, etc.).
 - **Path alias**: `@/*` maps to `./src/*`.
 
+#### Key Atoms
+- **`ErrorBoundary`** — Client-side React class component. Wraps the entire app in `layout.tsx`. Shows "Your funds are safe" recovery UI.
+- **`Skeleton`** — Shimmer loading placeholder: `<div className="animate-pulse bg-white/10 rounded" />`. Used in dashboard and markets stat cards.
+- **`Button`** — Variants: `primary`, `secondary`, `danger`, `ghost`, `warning` (amber gradient, for Borrow actions).
+
+#### Key Organisms
+- **`ActionCard`** — Multi-step modal: `input → approve → confirm`. Handles token approval flow via `useTokenApproval`. `isConfirmBlocked` guards `borrow` and `withdraw` when projected HF < 1.0. `resetApprove()` is called on action-type change and on "Back" navigation to prevent stale `isApproved` latch.
+- **`BottomNav`** — Fixed mobile tab bar (`md:hidden`). Four tabs: Dashboard, Markets, Portfolio, History. Amber active indicator.
+- **`Sidebar`** — Hidden on mobile (`hidden md:flex`). Visible only on `md+`.
+
+#### Contexts
+- **`SettingsContext`** (`contexts/SettingsContext.tsx`) — Persists `{ currency: 'USD'|'EUR'|'GBP', language: string }` to `localStorage` under key `quicklend_settings`. Uses lazy `useState` initializer (no `useEffect`). Validates parsed data before applying. Exposes `useSettings()`.
+- **`ToastContext`** — Toast notifications. `useToast()` must be called inside `ToastProvider` (in `layout.tsx`).
+
+#### ESLint Note
+The project uses a custom `react-hooks/set-state-in-effect` rule. Avoid `setState` inside `useEffect` bodies. Use lazy `useState` initializers for localStorage reads, and `useMemo` for derived values instead of state+effect pairs.
+
 ### Backend Layer
 - **API routes** in `src/api/routes/`: `health`, `markets`, `users`, `analytics`. Swagger docs at `/docs`.
 - **Event indexer** in `src/indexer/`: Backfills historical events and watches for new ones in real-time. Materializes `userPositions` and `liquidationLogs`.

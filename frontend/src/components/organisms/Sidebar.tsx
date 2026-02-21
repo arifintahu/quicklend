@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Zap, LayoutDashboard, TrendingUp, Wallet, Settings, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const SidebarItem = ({ icon: Icon, label, href }: { icon: any, label: string, href: string }) => {
+const SidebarItem = ({ icon: Icon, label, href }: { icon: React.ElementType, label: string, href: string }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
 
@@ -43,7 +43,7 @@ const SidebarItem = ({ icon: Icon, label, href }: { icon: any, label: string, hr
 
 export const Sidebar = () => {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-20 md:w-64 glass-panel border-r border-white/5 flex flex-col p-4 z-50">
+    <aside className="fixed left-0 top-0 h-screen w-20 md:w-64 glass-panel border-r border-white/5 hidden md:flex flex-col p-4 z-50">
       <div className="flex items-center gap-3 px-2 mb-12 mt-4">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00C6FF] to-[#0072FF] flex items-center justify-center shadow-lg shadow-blue-500/20">
             <Zap className="text-white fill-white" size={24} />

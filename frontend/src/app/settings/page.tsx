@@ -4,9 +4,9 @@ import React, { useState } from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { GlassCard } from '@/components/atoms/GlassCard';
-import { Button } from '@/components/atoms/Button';
+import { useSettings } from '@/contexts/SettingsContext';
 import { motion } from 'framer-motion';
-import { Bell, Globe, DollarSign, ShieldAlert, Zap } from 'lucide-react';
+import { Bell, Globe, ShieldAlert, Zap } from 'lucide-react';
 
 // Simple Toggle Component
 const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
@@ -18,14 +18,16 @@ const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void 
     </button>
 );
 
+const LANGUAGES = ['English', 'Spanish', 'French', 'Chinese'];
+
 export default function SettingsPage() {
+  const { settings, updateSettings } = useSettings();
+
   const [notifications, setNotifications] = useState({
       liquidation: true,
       apySpikes: false,
       newsletter: true
   });
-
-  const [currency, setCurrency] = useState('USD');
 
   return (
     <>
@@ -51,11 +53,11 @@ export default function SettingsPage() {
                             <div className="text-sm text-gray-400">Select your preferred currency for display</div>
                         </div>
                         <div className="flex bg-black/20 p-1 rounded-lg">
-                            {['USD', 'EUR', 'GBP'].map((c) => (
+                            {(['USD', 'EUR', 'GBP'] as const).map((c) => (
                                 <button
                                     key={c}
-                                    onClick={() => setCurrency(c)}
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${currency === c ? 'bg-[#00C6FF] text-white' : 'text-gray-400 hover:text-white'}`}
+                                    onClick={() => updateSettings({ currency: c })}
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${settings.currency === c ? 'bg-[#00C6FF] text-white' : 'text-gray-400 hover:text-white'}`}
                                 >
                                     {c}
                                 </button>
@@ -68,11 +70,14 @@ export default function SettingsPage() {
                             <div className="font-bold">Language</div>
                             <div className="text-sm text-gray-400">Platform language</div>
                         </div>
-                        <select className="bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-[#00C6FF]">
-                            <option>English</option>
-                            <option>Spanish</option>
-                            <option>French</option>
-                            <option>Chinese</option>
+                        <select
+                            value={settings.language}
+                            onChange={(e) => updateSettings({ language: e.target.value })}
+                            className="bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-[#00C6FF] cursor-pointer"
+                        >
+                            {LANGUAGES.map((lang) => (
+                                <option key={lang}>{lang}</option>
+                            ))}
                         </select>
                     </div>
                 </GlassCard>

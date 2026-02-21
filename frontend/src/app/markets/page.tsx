@@ -9,12 +9,13 @@ import { GlassCard } from '@/components/atoms/GlassCard';
 import { useMarkets } from '@/hooks/useMarkets';
 import { useUserPositions } from '@/hooks/useUserPositions';
 import { useActionModal } from '@/hooks/useActionModal';
+import { Skeleton } from '@/components/atoms/Skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, ShieldCheck } from 'lucide-react';
 
 export default function MarketsPage() {
-  const { markets } = useMarkets();
+  const { markets, isLoading } = useMarkets();
   const { positions: userPositions } = useUserPositions();
   const [searchTerm, setSearchTerm] = useState('');
   const {
@@ -44,26 +45,58 @@ export default function MarketsPage() {
         <Navbar />
 
         {/* Market Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
           <GlassCard className="flex flex-col justify-center">
             <div className="text-gray-400 text-sm mb-1">Total Market Size</div>
-            <div className="text-3xl font-mono font-bold text-white">
-              {formatCurrency(totalMarketSize)}
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-9 w-32 mt-1" />
+            ) : (
+              <div className="text-3xl font-mono font-bold text-white">
+                {formatCurrency(totalMarketSize)}
+              </div>
+            )}
           </GlassCard>
           <GlassCard className="flex flex-col justify-center">
             <div className="text-gray-400 text-sm mb-1">Total Available</div>
-            <div className="text-3xl font-mono font-bold text-[#00C6FF]">
-              {formatCurrency(totalAvailable)}
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-9 w-32 mt-1" />
+            ) : (
+              <div className="text-3xl font-mono font-bold text-[#00C6FF]">
+                {formatCurrency(totalAvailable)}
+              </div>
+            )}
           </GlassCard>
           <GlassCard className="flex flex-col justify-center">
             <div className="text-gray-400 text-sm mb-1">Total Borrows</div>
-            <div className="text-3xl font-mono font-bold text-[#FFB800]">
-              {formatCurrency(totalBorrows)}
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-9 w-32 mt-1" />
+            ) : (
+              <div className="text-3xl font-mono font-bold text-[#FFB800]">
+                {formatCurrency(totalBorrows)}
+              </div>
+            )}
           </GlassCard>
         </div>
+
+        {/* Trust Signal */}
+        <GlassCard className="flex items-center justify-between mb-8 py-3 px-5">
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <ShieldCheck size={16} className="text-[#42e695]" />
+            <span className="font-medium text-white">Non-Custodial</span>
+            <span className="text-gray-600">·</span>
+            <span className="font-medium text-white">Open Source</span>
+            <span className="text-gray-600">·</span>
+            <span>Your keys, your crypto</span>
+          </div>
+          <div className="text-sm text-gray-400">
+            TVL:{' '}
+            {isLoading ? (
+              <Skeleton className="inline-block h-4 w-16 align-middle" />
+            ) : (
+              <span className="font-mono font-bold text-white">{formatCurrency(totalMarketSize)}</span>
+            )}
+          </div>
+        </GlassCard>
 
         {/* Search & Filter */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
