@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { Web3Provider } from "@/providers/Web3Provider";
+import { ToastProvider } from "@/contexts/ToastContext";
+import { ToastContainer } from "@/components/organisms/ToastContainer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,13 +36,16 @@ export default function RootLayout({
         <div className="fixed bottom-[-20%] left-[10%] w-[700px] h-[700px] bg-[#FF0080]/15 rounded-full blur-[140px] pointer-events-none mix-blend-screen" />
         <div className="fixed bottom-[10%] right-[10%] w-[500px] h-[500px] bg-[#42e695]/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen" />
 
-        {/* Noise Texture Overlay (Optional for grit) */}
+        {/* Noise Texture Overlay */}
         <div className="fixed inset-0 opacity-[0.02] pointer-events-none z-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }}></div>
 
         <Web3Provider>
-          <div className="relative z-10 flex min-h-screen">
-            {children}
-          </div>
+          <ToastProvider>
+            <div className="relative z-10 flex min-h-screen">
+              {children}
+            </div>
+            <ToastContainer />
+          </ToastProvider>
         </Web3Provider>
       </body>
     </html>

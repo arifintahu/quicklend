@@ -26,17 +26,11 @@ vi.mock('@/components/organisms/HealthDial', () => ({
         <div data-testid="health-dial">{healthFactor}</div>
     ),
 }));
-vi.mock('@/components/organisms/AssetTable', () => ({
-    AssetTable: ({ markets }: { markets: unknown[] }) => (
-        <table data-testid="asset-table">
-            <tbody>
-                <tr><td>{markets.length} markets</td></tr>
-            </tbody>
-        </table>
-    ),
-}));
 vi.mock('@/components/organisms/ActionCard', () => ({
     ActionCard: () => <div data-testid="action-card">ActionCard</div>,
+}));
+vi.mock('@/components/organisms/WelcomeModal', () => ({
+    WelcomeModal: () => <div data-testid="welcome-modal">WelcomeModal</div>,
 }));
 
 const mockMarkets: useMarketsModule.MarketData[] = [
@@ -128,7 +122,6 @@ describe('Dashboard Page', () => {
         render(<Dashboard />);
 
         expect(screen.getByText('Protocol Health')).toBeInTheDocument();
-        expect(screen.getByText('Health Factor')).toBeInTheDocument();
     });
 
     it('displays Net APY', () => {
@@ -144,11 +137,13 @@ describe('Dashboard Page', () => {
         expect(screen.getByText('Debt')).toBeInTheDocument();
     });
 
-    it('renders the asset table with markets', () => {
+    it('renders assets to supply section with markets', () => {
         render(<Dashboard />);
 
-        expect(screen.getByTestId('asset-table')).toBeInTheDocument();
-        expect(screen.getByText('2 markets')).toBeInTheDocument();
+        // Both markets should appear in "Assets to Supply" and "Assets to Borrow" tables since no positions
+        expect(screen.getByText('Assets to Supply')).toBeInTheDocument();
+        expect(screen.getAllByText('USDC').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('WETH').length).toBeGreaterThan(0);
     });
 
     it('shows borrow power used', () => {
@@ -193,7 +188,7 @@ describe('Dashboard Page', () => {
 
         render(<Dashboard />);
 
-        // Should show $25,000 collateral
-        expect(screen.getByText('$25,000.00')).toBeInTheDocument();
+        // Should show $25,000.00 in at least one location (collateral card)
+        expect(screen.getAllByText('$25,000.00').length).toBeGreaterThan(0);
     });
 });

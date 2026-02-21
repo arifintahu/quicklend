@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/atoms/Button';
-import { Wallet, Bell, ChevronDown, CheckCircle, AlertTriangle, Info, XCircle } from 'lucide-react';
+import { Wallet, Bell, ChevronDown, CheckCircle, AlertTriangle, Info, XCircle, Copy, ExternalLink } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { MOCK_NOTIFICATIONS } from '@/lib/mock/notifications'; // Removed mock
 
 import { useWallet } from '@/hooks/useWallet';
 
@@ -22,12 +21,20 @@ const timeAgo = (date: string) => {
     return Math.floor(seconds) + " seconds ago";
 };
 
+const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+};
+
 export const Navbar = () => {
     const pathname = usePathname();
     const { isConnected, address, displayAddress, openConnectModal, disconnect, chain } = useWallet();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [notifications, setNotifications] = useState<any[]>([]); // Initialize empty
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [copied, setCopied] = useState(false);
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -42,12 +49,40 @@ export const Navbar = () => {
         }
     };
 
+    const getSubtitle = () => {
+        if (!isConnected) return 'Connect a wallet to get started';
+        return `${getGreeting()}, ${displayAddress}`;
+    };
+
     const handleConnect = () => {
         openConnectModal?.();
     };
 
     const handleDisconnect = () => {
         disconnect();
+        setIsDropdownOpen(false);
+    };
+
+    const handleCopyAddress = async () => {
+        if (!address) return;
+        try {
+            await navigator.clipboard.writeText(address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            // Fallback for environments without clipboard API
+        }
+    };
+
+    const handleViewOnExplorer = () => {
+        if (!address) return;
+        const explorerUrl = chain?.blockExplorers?.default?.url;
+        if (explorerUrl) {
+            window.open(`${explorerUrl}/address/${address}`, '_blank', 'noopener,noreferrer');
+        } else {
+            // Fallback to Etherscan for unknown chains
+            window.open(`https://etherscan.io/address/${address}`, '_blank', 'noopener,noreferrer');
+        }
         setIsDropdownOpen(false);
     };
 
@@ -68,7 +103,7 @@ export const Navbar = () => {
         <header className="flex justify-between items-center mb-8 relative z-50">
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">{getPageTitle()}</h1>
-                <p className="text-gray-400">Welcome back to QuickLend</p>
+                <p className="text-gray-400">{getSubtitle()}</p>
             </div>
 
             <div className="flex items-center gap-4">
@@ -159,14 +194,31 @@ export const Navbar = () => {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: 10 }}
-                                        className="absolute right-0 mt-2 w-48 bg-[#0B0E11] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
+                                        className="absolute right-0 mt-2 w-52 bg-[#0B0E11] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50"
                                     >
                                         <div className="p-2">
-                                            <button className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors">
-                                                Copy Address
+                                            <button
+                                                onClick={handleCopyAddress}
+                                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                                {copied ? (
+                                                    <>
+                                                        <CheckCircle size={14} className="text-[#42e695]" />
+                                                        <span className="text-[#42e695]">Copied!</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Copy size={14} className="text-gray-400" />
+                                                        Copy Address
+                                                    </>
+                                                )}
                                             </button>
-                                            <button className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors">
-                                                View on Etherscan
+                                            <button
+                                                onClick={handleViewOnExplorer}
+                                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2"
+                                            >
+                                                <ExternalLink size={14} className="text-gray-400" />
+                                                View on Explorer
                                             </button>
                                             <div className="h-px bg-white/10 my-1" />
                                             <button

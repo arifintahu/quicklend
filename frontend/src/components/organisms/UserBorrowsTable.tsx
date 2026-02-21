@@ -5,6 +5,7 @@ import { formatCurrency, formatPercentage } from '@/lib/utils';
 import { GlassCard } from '@/components/atoms/GlassCard';
 import { Button } from '@/components/atoms/Button';
 import { TickerNumber } from '@/components/atoms/TickerNumber';
+import { TokenIcon } from '@/components/atoms/TokenIcon';
 
 interface UserBorrowsTableProps {
   positions: UserPosition[];
@@ -72,9 +73,7 @@ export const UserBorrowsTable: React.FC<UserBorrowsTableProps> = ({
                   >
                     <td className="p-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold shadow-lg">
-                          {pos.symbol[0]}
-                        </div>
+                        <TokenIcon symbol={pos.symbol} size="md" />
                         <div>
                           <div className="font-bold text-white">{pos.symbol}</div>
                         </div>

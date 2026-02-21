@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import HistoryPage from '../history/page';
 import * as useTransactionHistoryModule from '@/hooks/useTransactionHistory';
+import * as useMarketsModule from '@/hooks/useMarkets';
 
 vi.mock('@/hooks/useTransactionHistory');
+vi.mock('@/hooks/useMarkets');
 
 vi.mock('@/components/organisms/Sidebar', () => ({
     Sidebar: () => <nav data-testid="sidebar">Sidebar</nav>,
@@ -15,6 +17,13 @@ vi.mock('@/components/organisms/Navbar', () => ({
 describe('History Page', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.spyOn(useMarketsModule, 'useMarkets').mockReturnValue({
+            markets: [],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+            isConfigured: false,
+        });
     });
 
     it('shows loading spinner when loading', () => {
@@ -45,7 +54,7 @@ describe('History Page', () => {
         render(<HistoryPage />);
 
         expect(screen.getByText('No transactions yet')).toBeInTheDocument();
-        expect(screen.getByText('Your transaction history will appear here')).toBeInTheDocument();
+        expect(screen.getByText('Your transaction history will appear here once you supply or borrow')).toBeInTheDocument();
     });
 
     it('renders transaction rows', () => {

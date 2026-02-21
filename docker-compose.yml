@@ -96,6 +96,16 @@ services:
       retries: 30
       start_period: 15s
 
+  landing-page:
+    build:
+      context: ./landing-page
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+
   e2e:
     build:
       context: ./frontend

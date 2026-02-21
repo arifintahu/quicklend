@@ -1,20 +1,23 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { HealthDial } from '@/components/organisms/HealthDial';
 import { UserSuppliesTable } from '@/components/organisms/UserSuppliesTable';
 import { UserBorrowsTable } from '@/components/organisms/UserBorrowsTable';
 import { ActionCard } from '@/components/organisms/ActionCard';
+import { WelcomeModal } from '@/components/organisms/WelcomeModal';
 import { GlassCard } from '@/components/atoms/GlassCard';
 import { Button } from '@/components/atoms/Button';
+import { Tooltip } from '@/components/atoms/Tooltip';
+import { TokenIcon } from '@/components/atoms/TokenIcon';
 import { useMarkets } from '@/hooks/useMarkets';
 import { useUserPositions } from '@/hooks/useUserPositions';
 import { useWallet } from '@/hooks/useWallet';
 import { useActionModal } from '@/hooks/useActionModal';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet } from 'lucide-react';
 
 export default function Dashboard() {
@@ -27,8 +30,22 @@ export default function Dashboard() {
         healthData,
         handleAction,
         calculateProjectedHF,
+        calculateProjectedLiquidationPrice,
         getMaxAmount,
     } = useActionModal(markets, userPositions);
+
+    const [showWelcome, setShowWelcome] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && !localStorage.getItem('quicklend_welcomed')) {
+            setShowWelcome(true);
+        }
+    }, []);
+
+    const handleCloseWelcome = () => {
+        localStorage.setItem('quicklend_welcomed', '1');
+        setShowWelcome(false);
+    };
 
     const suppliedSymbols = new Set(userPositions.filter(p => p.suppliedAmount > 0).map(p => p.symbol));
     const assetsToSupply = markets.filter(m => !suppliedSymbols.has(m.symbol));
@@ -38,6 +55,9 @@ export default function Dashboard() {
 
     const hasSupplyPositions = userPositions.some(p => p.suppliedAmount > 0);
     const hasBorrowPositions = userPositions.some(p => p.borrowedAmount > 0);
+
+    const bestSupplyAPY = markets.reduce((max, m) => Math.max(max, m.supplyAPY), 0);
+    const bestSupplySymbol = markets.find(m => m.supplyAPY === bestSupplyAPY)?.symbol ?? '';
 
     return (
         <>
@@ -55,13 +75,19 @@ export default function Dashboard() {
                                 <span className="text-5xl font-mono font-bold text-white tracking-tighter">
                                     {healthData.healthFactor > 100 ? '∞' : healthData.healthFactor.toFixed(2)}
                                 </span>
-                                <span className="text-sm text-gray-400 mb-2">Health Factor</span>
+                                <span className="flex items-center text-sm text-gray-400 mb-2">
+                                    Health Factor
+                                    <Tooltip content="Your safety score. Above 1.0 means your loan is safe. Below 1.0 and your collateral can be seized by liquidators." />
+                                </span>
                             </div>
 
                             <div className="space-y-4">
                                 <div>
                                     <div className="flex justify-between text-sm mb-1">
-                                        <span className="text-gray-400">Borrow Power Used</span>
+                                        <span className="flex items-center text-gray-400">
+                                            Borrow Power Used
+                                            <Tooltip content="What percentage of your maximum borrowing capacity you are currently using. 100% means you have reached your borrowing limit." />
+                                        </span>
                                         <span className="text-white font-mono">{formatPercentage(healthData.borrowPowerUsed)}</span>
                                     </div>
                                     <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
@@ -85,7 +111,10 @@ export default function Dashboard() {
 
                     <div className="space-y-6 flex flex-col">
                         <GlassCard className="flex-1 flex flex-col justify-center relative overflow-hidden group">
-                            <div className="text-gray-400 text-sm mb-1">Net APY</div>
+                            <div className="flex items-center text-gray-400 text-sm mb-1">
+                                Net APY
+                                <Tooltip content="Annual Percentage Yield — your net return after subtracting borrow costs from supply earnings, applied to your equity." />
+                            </div>
                             <div className="text-4xl font-mono font-bold text-gradient-success w-fit">
                                 {formatPercentage(healthData.netAPY)}
                             </div>
@@ -94,13 +123,19 @@ export default function Dashboard() {
 
                         <div className="grid grid-cols-2 gap-4 flex-1">
                             <GlassCard className="flex flex-col justify-center">
-                                <div className="text-gray-400 text-xs mb-1">Collateral</div>
+                                <div className="flex items-center text-gray-400 text-xs mb-1">
+                                    Collateral
+                                    <Tooltip content="Total value of assets you have supplied and enabled as collateral for borrowing." />
+                                </div>
                                 <div className="text-lg font-mono font-bold text-white">
                                     {formatCurrency(healthData.totalCollateralUSD)}
                                 </div>
                             </GlassCard>
                             <GlassCard className="flex flex-col justify-center">
-                                <div className="text-gray-400 text-xs mb-1">Debt</div>
+                                <div className="flex items-center text-gray-400 text-xs mb-1">
+                                    Debt
+                                    <Tooltip content="Total value of assets you have borrowed, which accrue interest over time." />
+                                </div>
                                 <div className="text-lg font-mono font-bold text-[#FFB800]">
                                     {formatCurrency(healthData.totalDebtUSD)}
                                 </div>
@@ -123,7 +158,7 @@ export default function Dashboard() {
                                     positions={userPositions}
                                     markets={markets}
                                     onSupply={(asset) => setSelectedAsset({ asset, action: 'supply' })}
-                                    onWithdraw={(asset) => setSelectedAsset({ asset, action: 'supply' })}
+                                    onWithdraw={(asset) => setSelectedAsset({ asset, action: 'withdraw' })}
                                 />
                             ) : (
                                 <div>
@@ -132,8 +167,21 @@ export default function Dashboard() {
                                         Your Supplies
                                     </h3>
                                     <GlassCard className="text-center py-8">
-                                        <p className="text-gray-400 mb-2">Nothing supplied yet</p>
-                                        <p className="text-sm text-gray-500">Supply assets to start earning interest</p>
+                                        <p className="text-gray-300 font-medium mb-1">
+                                            Earn up to {formatPercentage(bestSupplyAPY)} APY on {bestSupplySymbol}
+                                        </p>
+                                        <p className="text-sm text-gray-500 mb-4">
+                                            Supply your first asset to start earning interest
+                                        </p>
+                                        {assetsToSupply[0] && (
+                                            <Button
+                                                size="sm"
+                                                variant="primary"
+                                                onClick={() => setSelectedAsset({ asset: assetsToSupply[0], action: 'supply' })}
+                                            >
+                                                Supply {assetsToSupply[0].symbol} →
+                                            </Button>
+                                        )}
                                     </GlassCard>
                                 </div>
                             )}
@@ -151,7 +199,7 @@ export default function Dashboard() {
                                     markets={markets}
                                     borrowPowerUsed={healthData.borrowPowerUsed}
                                     onBorrow={(asset) => setSelectedAsset({ asset, action: 'borrow' })}
-                                    onRepay={(asset) => setSelectedAsset({ asset, action: 'borrow' })}
+                                    onRepay={(asset) => setSelectedAsset({ asset, action: 'repay' })}
                                 />
                             ) : (
                                 <div>
@@ -160,8 +208,12 @@ export default function Dashboard() {
                                         Your Borrows
                                     </h3>
                                     <GlassCard className="text-center py-8">
-                                        <p className="text-gray-400 mb-2">Nothing borrowed yet</p>
-                                        <p className="text-sm text-gray-500">Borrow against your collateral</p>
+                                        <p className="text-gray-300 font-medium mb-1">
+                                            Unlock liquidity without selling your crypto
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            Supply collateral first, then borrow against it at competitive rates
+                                        </p>
                                     </GlassCard>
                                 </div>
                             )}
@@ -184,7 +236,12 @@ export default function Dashboard() {
                                             <thead>
                                                 <tr className="border-b border-gray-800 text-gray-400 text-xs font-sans uppercase tracking-wider">
                                                     <th className="p-4 font-medium">Asset</th>
-                                                    <th className="p-4 font-medium text-right">Supply APY</th>
+                                                    <th className="p-4 font-medium text-right">
+                                                        <span className="flex items-center justify-end gap-1">
+                                                            Supply APY
+                                                            <Tooltip content="Annual Percentage Yield — interest you earn by supplying this asset." />
+                                                        </span>
+                                                    </th>
                                                     <th className="p-4 font-medium text-right">Available Liquidity</th>
                                                     <th className="p-4 font-medium text-right"></th>
                                                 </tr>
@@ -194,9 +251,7 @@ export default function Dashboard() {
                                                     <tr key={market.symbol} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
                                                         <td className="p-4">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold">
-                                                                    {market.symbol[0]}
-                                                                </div>
+                                                                <TokenIcon symbol={market.symbol} />
                                                                 <span className="font-bold text-white">{market.symbol}</span>
                                                             </div>
                                                         </td>
@@ -242,7 +297,12 @@ export default function Dashboard() {
                                             <thead>
                                                 <tr className="border-b border-gray-800 text-gray-400 text-xs font-sans uppercase tracking-wider">
                                                     <th className="p-4 font-medium">Asset</th>
-                                                    <th className="p-4 font-medium text-right">Borrow APY</th>
+                                                    <th className="p-4 font-medium text-right">
+                                                        <span className="flex items-center justify-end gap-1">
+                                                            Borrow APY
+                                                            <Tooltip content="Annual Percentage Rate — interest you pay per year on borrowed amounts." />
+                                                        </span>
+                                                    </th>
                                                     <th className="p-4 font-medium text-right">Available Liquidity</th>
                                                     <th className="p-4 font-medium text-right"></th>
                                                 </tr>
@@ -252,9 +312,7 @@ export default function Dashboard() {
                                                     <tr key={market.symbol} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
                                                         <td className="p-4">
                                                             <div className="flex items-center gap-3">
-                                                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold">
-                                                                    {market.symbol[0]}
-                                                                </div>
+                                                                <TokenIcon symbol={market.symbol} />
                                                                 <span className="font-bold text-white">{market.symbol}</span>
                                                             </div>
                                                         </td>
@@ -322,8 +380,15 @@ export default function Dashboard() {
                     onClose={() => setSelectedAsset(null)}
                     onConfirm={handleAction}
                     calculateProjectedHealthFactor={(amount, action) => calculateProjectedHF(amount, action, selectedAsset.asset)}
+                    currentLiquidationPrice={healthData.liquidationPrice}
+                    calculateProjectedLiquidationPrice={(amount, action) => calculateProjectedLiquidationPrice(amount, action, selectedAsset.asset)}
                 />
             )}
+
+            {/* First-visit Welcome Modal */}
+            <AnimatePresence>
+                {showWelcome && <WelcomeModal onClose={handleCloseWelcome} />}
+            </AnimatePresence>
         </>
     );
 }

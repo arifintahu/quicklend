@@ -4,7 +4,9 @@ import React, { useState } from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { GlassCard } from '@/components/atoms/GlassCard';
+import { TokenIcon } from '@/components/atoms/TokenIcon';
 import { useTransactionHistory } from '@/hooks/useTransactionHistory';
+import { useMarkets } from '@/hooks/useMarkets';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { ExternalLink, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -12,6 +14,20 @@ import { ExternalLink, CheckCircle, Clock, XCircle, ChevronLeft, ChevronRight, L
 export default function HistoryPage() {
   const [page, setPage] = useState(1);
   const { history, pagination, isLoading } = useTransactionHistory(page, 20);
+  const { markets } = useMarkets();
+
+  // Build a lookup: lowercase address → symbol
+  const addressToSymbol = new Map(
+    markets.map(m => [m.asset.toLowerCase(), m.symbol])
+  );
+
+  const resolveAsset = (assetAddress: string) => {
+    if (!assetAddress) return { symbol: '—', hasSymbol: false };
+    const symbol = addressToSymbol.get(assetAddress.toLowerCase());
+    return symbol
+      ? { symbol, hasSymbol: true }
+      : { symbol: `${assetAddress.slice(0, 6)}…${assetAddress.slice(-4)}`, hasSymbol: false };
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -68,7 +84,7 @@ export default function HistoryPage() {
               <div className="flex flex-col items-center justify-center p-16 text-gray-500">
                 <Clock size={48} className="mb-4 opacity-50" />
                 <p className="text-lg font-medium">No transactions yet</p>
-                <p className="text-sm mt-1">Your transaction history will appear here</p>
+                <p className="text-sm mt-1">Your transaction history will appear here once you supply or borrow</p>
               </div>
             ) : (
               <>
@@ -84,30 +100,38 @@ export default function HistoryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {history.map((tx, idx) => (
-                      <tr key={`${tx.txHash}-${idx}`} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className={cn("p-6 font-bold", getActionColor(tx.eventName))}>
-                          {tx.eventName}
-                        </td>
-                        <td className="p-6 font-mono text-white">
-                          {shortenHash(tx.asset)}
-                        </td>
-                        <td className="p-6 text-right font-mono text-white">
-                          {tx.amount ?? '-'}
-                        </td>
-                        <td className="p-6">
-                          {getStatusBadge('Confirmed')}
-                        </td>
-                        <td className="p-6 text-right text-gray-400 text-sm">
-                          {new Date(tx.timestamp).toLocaleString()}
-                        </td>
-                        <td className="p-6 text-right">
-                          <span className="flex items-center justify-end gap-1 text-[#00C6FF] text-sm font-mono">
-                            {shortenHash(tx.txHash)} <ExternalLink size={12} />
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {history.map((tx, idx) => {
+                      const { symbol, hasSymbol } = resolveAsset(tx.asset);
+                      return (
+                        <tr key={`${tx.txHash}-${idx}`} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className={cn("p-6 font-bold", getActionColor(tx.eventName))}>
+                            {tx.eventName}
+                          </td>
+                          <td className="p-6">
+                            <div className="flex items-center gap-2">
+                              {hasSymbol && <TokenIcon symbol={symbol} size="sm" />}
+                              <span className={cn("font-mono", hasSymbol ? "text-white font-bold" : "text-gray-400 text-sm")}>
+                                {symbol}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-6 text-right font-mono text-white">
+                            {tx.amount ?? '-'}
+                          </td>
+                          <td className="p-6">
+                            {getStatusBadge('Confirmed')}
+                          </td>
+                          <td className="p-6 text-right text-gray-400 text-sm">
+                            {new Date(tx.timestamp).toLocaleString()}
+                          </td>
+                          <td className="p-6 text-right">
+                            <span className="flex items-center justify-end gap-1 text-[#00C6FF] text-sm font-mono">
+                              {shortenHash(tx.txHash)} <ExternalLink size={12} />
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 

@@ -11,7 +11,7 @@ import { useUserPositions } from '@/hooks/useUserPositions';
 import { useActionModal } from '@/hooks/useActionModal';
 import { formatCurrency } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Search, Filter } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 export default function MarketsPage() {
   const { markets } = useMarkets();
@@ -23,6 +23,7 @@ export default function MarketsPage() {
     healthData,
     handleAction,
     calculateProjectedHF,
+    calculateProjectedLiquidationPrice,
     getMaxAmount,
   } = useActionModal(markets, userPositions);
 
@@ -76,10 +77,6 @@ export default function MarketsPage() {
               className="w-full glass-input rounded-xl pl-12 pr-4 py-3"
             />
           </div>
-          <button className="flex items-center gap-2 px-6 py-3 rounded-xl glass-input hover:bg-white/10 transition-colors">
-            <Filter size={20} />
-            <span>Filter</span>
-          </button>
         </div>
 
         {/* Markets Table */}
@@ -105,6 +102,8 @@ export default function MarketsPage() {
           onClose={() => setSelectedAsset(null)}
           onConfirm={handleAction}
           calculateProjectedHealthFactor={(amount, action) => calculateProjectedHF(amount, action, selectedAsset.asset)}
+          currentLiquidationPrice={healthData.liquidationPrice}
+          calculateProjectedLiquidationPrice={(amount, action) => calculateProjectedLiquidationPrice(amount, action, selectedAsset.asset)}
         />
       )}
     </>

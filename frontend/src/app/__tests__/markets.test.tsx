@@ -3,9 +3,15 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import MarketsPage from '../markets/page';
 import * as useMarketsModule from '@/hooks/useMarkets';
 import * as useUserPositionsModule from '@/hooks/useUserPositions';
+import * as useLendingActionsModule from '@/hooks/useLendingActions';
+import * as useWalletBalanceModule from '@/hooks/useWalletBalance';
+import * as useProtocolHealthModule from '@/hooks/useProtocolHealth';
 
 vi.mock('@/hooks/useMarkets');
 vi.mock('@/hooks/useUserPositions');
+vi.mock('@/hooks/useLendingActions');
+vi.mock('@/hooks/useWalletBalance');
+vi.mock('@/hooks/useProtocolHealth');
 
 vi.mock('@/components/organisms/Sidebar', () => ({
     Sidebar: () => <nav data-testid="sidebar">Sidebar</nav>,
@@ -13,9 +19,9 @@ vi.mock('@/components/organisms/Sidebar', () => ({
 vi.mock('@/components/organisms/Navbar', () => ({
     Navbar: () => <header data-testid="navbar">Navbar</header>,
 }));
-vi.mock('@/components/organisms/AssetTable', () => ({
-    AssetTable: ({ markets }: { markets: unknown[] }) => (
-        <table data-testid="asset-table">
+vi.mock('@/components/organisms/MarketsTable', () => ({
+    MarketsTable: ({ markets }: { markets: unknown[] }) => (
+        <table data-testid="markets-table">
             <tbody>
                 <tr><td>{markets.length} markets</td></tr>
             </tbody>
@@ -70,6 +76,35 @@ describe('Markets Page', () => {
             isConnected: true,
             address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
         });
+        vi.spyOn(useLendingActionsModule, 'useLendingActions').mockReturnValue({
+            supply: vi.fn(),
+            withdraw: vi.fn(),
+            borrow: vi.fn(),
+            repay: vi.fn(),
+            setCollateral: vi.fn(),
+            liquidate: vi.fn(),
+            txHash: undefined,
+            isPending: false,
+            isConfirming: false,
+            isSuccess: false,
+            error: null,
+            reset: vi.fn(),
+            isConnected: true,
+            address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+        });
+        vi.spyOn(useWalletBalanceModule, 'useWalletBalance').mockReturnValue({
+            balance: 0,
+            isLoading: false,
+            refetch: vi.fn(),
+        });
+        vi.spyOn(useProtocolHealthModule, 'useProtocolHealth').mockReturnValue({
+            healthFactor: 0,
+            status: 'none',
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+            isConnected: true,
+        });
     });
 
     it('renders market stats', () => {
@@ -119,15 +154,16 @@ describe('Markets Page', () => {
         expect(screen.getByText('0 markets')).toBeInTheDocument();
     });
 
-    it('renders the asset table', () => {
+    it('renders the markets table', () => {
         render(<MarketsPage />);
 
-        expect(screen.getByTestId('asset-table')).toBeInTheDocument();
+        expect(screen.getByTestId('markets-table')).toBeInTheDocument();
     });
 
-    it('has a filter button', () => {
+    it('does not render a Filter button', () => {
         render(<MarketsPage />);
 
-        expect(screen.getByText('Filter')).toBeInTheDocument();
+        // Filter button was removed as it had no functionality
+        expect(screen.queryByText('Filter')).not.toBeInTheDocument();
     });
 });

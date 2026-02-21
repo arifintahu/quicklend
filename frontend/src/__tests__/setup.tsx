@@ -49,6 +49,9 @@ vi.mock('wagmi', () => ({
     useAccount: vi.fn(() => ({
         address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
         isConnected: true,
+        isConnecting: false,
+        isReconnecting: false,
+        chain: { id: 31337, name: 'Localhost', blockExplorers: { default: { url: 'http://localhost' } } },
     })),
     useReadContract: vi.fn(() => ({
         data: undefined,
@@ -68,6 +71,7 @@ vi.mock('wagmi', () => ({
         isSuccess: false,
         error: null,
     })),
+    useDisconnect: vi.fn(() => ({ disconnect: vi.fn() })),
     useChainId: vi.fn(() => 31337),
     useConfig: vi.fn(() => ({})),
     WagmiProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -93,6 +97,19 @@ vi.mock('@rainbow-me/rainbowkit', () => ({
     ConnectButton: () => <button data-testid="connect-button">Connect Wallet</button>,
     RainbowKitProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     getDefaultConfig: vi.fn(() => ({})),
+    useConnectModal: vi.fn(() => ({ openConnectModal: vi.fn() })),
+    useAccountModal: vi.fn(() => ({ openAccountModal: vi.fn() })),
+    useChainModal: vi.fn(() => ({ openChainModal: vi.fn() })),
+}));
+
+// Mock ToastContext globally so components don't need ToastProvider in tests
+vi.mock('@/contexts/ToastContext', () => ({
+    ToastProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useToast: () => ({
+        toasts: [],
+        addToast: vi.fn(() => 'mock-toast-id'),
+        removeToast: vi.fn(),
+    }),
 }));
 
 // Suppress console.warn in tests
