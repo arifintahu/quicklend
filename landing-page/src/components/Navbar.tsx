@@ -34,7 +34,7 @@ export default function Navbar() {
       >
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2 font-bold text-lg">
+          <a href="/" className="flex items-center gap-2 font-bold text-lg cursor-pointer">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00C6FF] to-[#0072FF] flex items-center justify-center">
               <Zap size={16} className="text-white" />
             </div>
@@ -65,7 +65,7 @@ export default function Navbar() {
               Launch App
             </a>
             <button
-              className="md:hidden p-2 rounded-lg glass-panel"
+              className="md:hidden p-2 rounded-lg glass-panel cursor-pointer"
               onClick={() => setMobileOpen((o) => !o)}
               aria-label="Toggle menu"
             >

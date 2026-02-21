@@ -53,7 +53,7 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-12">
           {/* Logo + tagline */}
           <div className="flex flex-col gap-1">
-            <a href="/" className="flex items-center gap-2 font-bold text-lg">
+            <a href="/" className="flex items-center gap-2 font-bold text-lg cursor-pointer">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00C6FF] to-[#0072FF] flex items-center justify-center">
                 <Zap size={16} className="text-white" />
               </div>
@@ -77,7 +77,7 @@ export default function Footer() {
                   href.startsWith("http") ? "noopener noreferrer" : undefined
                 }
                 aria-label={label}
-                className="w-9 h-9 glass-panel rounded-lg flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                className="w-9 h-9 glass-panel rounded-lg flex items-center justify-center text-gray-400 hover:text-white transition-colors cursor-pointer"
               >
                 <Icon size={16} />
               </a>
@@ -105,7 +105,7 @@ export default function Footer() {
                           ? "noopener noreferrer"
                           : undefined
                       }
-                      className="text-sm text-gray-400 hover:text-white transition-colors"
+                      className="text-sm text-gray-400 hover:text-white transition-colors cursor-pointer"
                     >
                       {link.label}
                     </a>
