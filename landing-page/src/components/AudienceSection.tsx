@@ -119,7 +119,7 @@ export default function AudienceSection() {
               {/* CTA */}
               <a
                 href={a.cta.href}
-                className={`inline-flex items-center gap-1.5 text-sm font-medium ${a.ctaColor} hover:underline mt-auto group-hover:gap-2.5 transition-all`}
+                className={`inline-flex items-center gap-1.5 text-sm font-medium ${a.ctaColor} hover:underline mt-auto group-hover:gap-2.5 transition-all cursor-pointer`}
               >
                 {a.cta.label}
                 <ArrowRight size={14} />

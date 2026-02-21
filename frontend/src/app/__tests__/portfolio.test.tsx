@@ -3,9 +3,11 @@ import { render, screen } from '@testing-library/react';
 import PortfolioPage from '../portfolio/page';
 import * as useMarketsModule from '@/hooks/useMarkets';
 import * as useUserPositionsModule from '@/hooks/useUserPositions';
+import * as useLendingActionsModule from '@/hooks/useLendingActions';
 
 vi.mock('@/hooks/useMarkets');
 vi.mock('@/hooks/useUserPositions');
+vi.mock('@/hooks/useLendingActions');
 
 vi.mock('@/components/organisms/Sidebar', () => ({
     Sidebar: () => <nav data-testid="sidebar">Sidebar</nav>,
@@ -45,6 +47,22 @@ const mockMarkets: useMarketsModule.MarketData[] = [
 
 describe('Portfolio Page', () => {
     beforeEach(() => {
+        vi.spyOn(useLendingActionsModule, 'useLendingActions').mockReturnValue({
+            supply: vi.fn(),
+            withdraw: vi.fn(),
+            borrow: vi.fn(),
+            repay: vi.fn(),
+            setCollateral: vi.fn(),
+            liquidate: vi.fn(),
+            txHash: undefined,
+            isPending: false,
+            isConfirming: false,
+            isSuccess: false,
+            error: null,
+            reset: vi.fn(),
+            isConnected: true,
+            address: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+        });
         vi.spyOn(useMarketsModule, 'useMarkets').mockReturnValue({
             markets: mockMarkets,
             isLoading: false,
@@ -75,7 +93,7 @@ describe('Portfolio Page', () => {
         render(<PortfolioPage />);
 
         expect(screen.getByText('Coming Soon')).toBeInTheDocument();
-        expect(screen.getByText('Reward program not yet active')).toBeInTheDocument();
+        expect(screen.getByText('Earn QuickLend points on every interaction (launching soon)')).toBeInTheDocument();
     });
 
     it('shows empty state for supplied assets', () => {

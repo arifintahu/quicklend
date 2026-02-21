@@ -90,7 +90,7 @@ export default function SecuritySection() {
               {t.cta && (
                 <a
                   href={t.cta.href}
-                  className={`text-sm font-medium ${t.color} hover:underline mt-auto`}
+                  className={`text-sm font-medium ${t.color} hover:underline mt-auto cursor-pointer`}
                   target={t.cta.href.startsWith("http") ? "_blank" : undefined}
                   rel={
                     t.cta.href.startsWith("http")

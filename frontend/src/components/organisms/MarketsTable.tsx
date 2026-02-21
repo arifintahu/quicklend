@@ -3,6 +3,8 @@ import { MarketData } from '@/hooks/useMarkets';
 import { formatCurrency, formatPercentage, cn } from '@/lib/utils';
 import { GlassCard } from '@/components/atoms/GlassCard';
 import { TickerNumber } from '@/components/atoms/TickerNumber';
+import { TokenIcon } from '@/components/atoms/TokenIcon';
+import { Tooltip } from '@/components/atoms/Tooltip';
 
 interface MarketsTableProps {
   markets: MarketData[];
@@ -18,10 +20,25 @@ export const MarketsTable: React.FC<MarketsTableProps> = ({ markets, onSelectAss
             <tr className="border-b border-gray-800 text-gray-400 text-xs font-sans uppercase tracking-wider">
               <th className="p-5 font-medium">Asset</th>
               <th className="p-5 font-medium text-right">Total Supplied</th>
-              <th className="p-5 font-medium text-right">Supply APY</th>
+              <th className="p-5 font-medium text-right">
+                <span className="flex items-center justify-end gap-1">
+                  Supply APY
+                  <Tooltip content="Annual Percentage Yield — interest earned by suppliers. Higher utilization drives higher rates." />
+                </span>
+              </th>
               <th className="p-5 font-medium text-right">Total Borrowed</th>
-              <th className="p-5 font-medium text-right">Borrow APY</th>
-              <th className="p-5 font-medium text-right">Utilization</th>
+              <th className="p-5 font-medium text-right">
+                <span className="flex items-center justify-end gap-1">
+                  Borrow APY
+                  <Tooltip content="Annual Percentage Rate — interest paid by borrowers. Automatically adjusts based on pool utilization." />
+                </span>
+              </th>
+              <th className="p-5 font-medium text-right">
+                <span className="flex items-center justify-end gap-1">
+                  Utilization
+                  <Tooltip content="How much of the deposited funds are currently lent out. Higher utilization means higher interest rates for both suppliers and borrowers." />
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -47,9 +64,7 @@ export const MarketsTable: React.FC<MarketsTableProps> = ({ markets, onSelectAss
                 >
                   <td className="p-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold shadow-lg group-hover:bg-white/20 transition-colors">
-                        {market.symbol[0]}
-                      </div>
+                      <TokenIcon symbol={market.symbol} size="md" />
                       <div>
                         <div className="font-bold text-white">{market.symbol}</div>
                       </div>
