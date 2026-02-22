@@ -5,13 +5,20 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 
 import { config } from './config/index.js';
-import { marketsRoutes } from './api/routes/markets.js';
-import { usersRoutes } from './api/routes/users.js';
-import { analyticsRoutes } from './api/routes/analytics.js';
-import { healthRoutes } from './api/routes/health.js';
+import { DatabaseRepositoryFactory } from './repositories/DatabaseRepositoryFactory.js';
+import { AppServiceFactory } from './services/AppServiceFactory.js';
+import { buildHealthRoutes } from './api/routes/health.js';
+import { buildMarketsRoutes } from './api/routes/markets.js';
+import { buildUsersRoutes } from './api/routes/users.js';
+import { buildAnalyticsRoutes } from './api/routes/analytics.js';
 import { EventIndexer } from './indexer/indexer.js';
 
 async function buildServer() {
+    // Compose the factory graph:
+    //   IRepositoryFactory → IServiceFactory → IRouteFactory → Fastify plugin
+    const repositoryFactory = DatabaseRepositoryFactory.getInstance();
+    const serviceFactory = new AppServiceFactory(repositoryFactory);
+
     const fastify = Fastify({
         logger: {
             level: config.isDev ? 'debug' : 'info',
@@ -40,12 +47,12 @@ async function buildServer() {
         }),
     });
 
-    // Register Swagger
+    // Register Swagger / OpenAPI
     await fastify.register(swagger, {
         openapi: {
             info: {
                 title: 'QuickLend API',
-                description: 'API for QuickLend DeFi lending protocol',
+                description: 'REST API for the QuickLend decentralized lending protocol',
                 version: '1.0.0',
             },
             servers: [
@@ -53,33 +60,28 @@ async function buildServer() {
                 { url: 'https://api.quicklend.xyz', description: 'Production' },
             ],
             tags: [
-                { name: 'Health', description: 'Health check endpoints' },
-                { name: 'Markets', description: 'Lending market data' },
-                { name: 'Users', description: 'User positions and history' },
-                { name: 'Analytics', description: 'Protocol metrics' },
+                { name: 'Health', description: 'Service liveness endpoints' },
+                { name: 'Markets', description: 'Lending market data (APYs, liquidity, prices)' },
+                { name: 'Users', description: 'User positions, health factor, and transaction history' },
+                { name: 'Analytics', description: 'Protocol-wide TVL and liquidation metrics' },
             ],
         },
     });
 
     await fastify.register(swaggerUi, {
         routePrefix: '/docs',
-        uiConfig: {
-            docExpansion: 'list',
-            deepLinking: true,
-        },
+        uiConfig: { docExpansion: 'list', deepLinking: true },
     });
 
-    // Register routes
-    await fastify.register(healthRoutes, { prefix: '/health' });
-    await fastify.register(marketsRoutes, { prefix: '/api/v1/markets' });
-    await fastify.register(usersRoutes, { prefix: '/api/v1/users' });
-    await fastify.register(analyticsRoutes, { prefix: '/api/v1/analytics' });
+    // Register route plugins produced by the Abstract Factory
+    await fastify.register(buildHealthRoutes(serviceFactory), { prefix: '/health' });
+    await fastify.register(buildMarketsRoutes(serviceFactory), { prefix: '/api/v1/markets' });
+    await fastify.register(buildUsersRoutes(serviceFactory), { prefix: '/api/v1/users' });
+    await fastify.register(buildAnalyticsRoutes(serviceFactory), { prefix: '/api/v1/analytics' });
 
     // Global error handler
     fastify.setErrorHandler((error, request, reply) => {
         const statusCode = error.statusCode || 500;
-        const isProduction = !config.isDev;
-
         fastify.log.error({
             err: error,
             requestId: request.id,
@@ -89,16 +91,15 @@ async function buildServer() {
 
         reply.status(statusCode).send({
             success: false,
-            error: isProduction && statusCode === 500 ? 'Internal server error' : error.message,
+            error: !config.isDev && statusCode === 500 ? 'Internal server error' : error.message,
             code: error.code || 'INTERNAL_ERROR',
-            ...(isProduction ? {} : { stack: error.stack }),
+            ...(config.isDev ? { stack: error.stack } : {}),
         });
     });
 
     return fastify;
 }
 
-// Start server
 buildServer().then((server) => {
     server.listen({ port: config.port, host: '0.0.0.0' }, (err, address) => {
         if (err) {
@@ -109,7 +110,6 @@ buildServer().then((server) => {
         server.log.info(`API docs at ${address}/docs`);
         server.log.info(`Chain ID: ${config.chainId}`);
 
-        // Start the event indexer
         const indexer = new EventIndexer();
         if (config.lendingPoolAddress) {
             server.log.info(`LendingPool: ${config.lendingPoolAddress}`);
@@ -117,7 +117,6 @@ buildServer().then((server) => {
                 server.log.error({ err }, 'Failed to start indexer');
             });
 
-            // Graceful shutdown
             const shutdown = async () => {
                 await indexer.stop();
                 await server.close();
@@ -126,7 +125,7 @@ buildServer().then((server) => {
             process.on('SIGINT', shutdown);
             process.on('SIGTERM', shutdown);
         } else {
-            server.log.warn('Contracts not configured. Set LENDING_POOL_ADDRESS');
+            server.log.warn('Contracts not configured. Set LENDING_POOL_ADDRESS env var.');
         }
     });
 }).catch((err) => {

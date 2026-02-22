@@ -1,17 +1,28 @@
 import { publicClient } from '../lib/viem.js';
 import { config } from '../config/index.js';
-import { db, schema } from '../db/index.js';
-import { eq } from 'drizzle-orm';
 import { LENDING_POOL_EVENTS } from './abi.js';
-import { processEvent } from './processor.js';
+import { EventProcessor } from './processor.js';
 import { startSnapshotJob, stopSnapshotJob } from './snapshots.js';
+import { EventRepository } from '../repositories/EventRepository.js';
+import { UserRepository } from '../repositories/UserRepository.js';
 import { decodeEventLog, type Log } from 'viem';
+import type { IEventProcessor, DecodedEvent } from './interfaces/IEventProcessor.js';
 
 const BATCH_SIZE = 1000n;
 
 export class EventIndexer {
     private isRunning = false;
     private unwatch: (() => void) | null = null;
+    private readonly processor: IEventProcessor;
+    private readonly eventRepository: EventRepository;
+
+    constructor(processor?: IEventProcessor) {
+        this.eventRepository = new EventRepository();
+        this.processor = processor ?? new EventProcessor(
+            this.eventRepository,
+            new UserRepository()
+        );
+    }
 
     async start(): Promise<void> {
         if (!config.lendingPoolAddress) {
@@ -22,14 +33,9 @@ export class EventIndexer {
         this.isRunning = true;
         console.log(`[Indexer] Starting indexer for LendingPool at ${config.lendingPoolAddress}`);
 
-        // Backfill from last checkpoint
         await this.backfill();
-
-        // Start live event watching
         this.watchLive();
-
-        // Start market snapshot job
-        startSnapshotJob();
+        await startSnapshotJob();
     }
 
     async stop(): Promise<void> {
@@ -43,28 +49,12 @@ export class EventIndexer {
     }
 
     private async getLastProcessedBlock(): Promise<bigint> {
-        const state = await db.query.indexerState.findFirst({
-            where: eq(schema.indexerState.chainId, config.chainId),
-        });
+        const state = await this.eventRepository.findIndexerState(config.chainId);
         return state?.lastProcessedBlock ?? 0n;
     }
 
     private async saveCheckpoint(blockNumber: bigint): Promise<void> {
-        const existing = await db.query.indexerState.findFirst({
-            where: eq(schema.indexerState.chainId, config.chainId),
-        });
-
-        if (existing) {
-            await db
-                .update(schema.indexerState)
-                .set({ lastProcessedBlock: blockNumber, updatedAt: new Date() })
-                .where(eq(schema.indexerState.id, existing.id));
-        } else {
-            await db.insert(schema.indexerState).values({
-                chainId: config.chainId,
-                lastProcessedBlock: blockNumber,
-            });
-        }
+        await this.eventRepository.saveIndexerState(config.chainId, blockNumber);
     }
 
     private async backfill(): Promise<void> {
@@ -77,7 +67,6 @@ export class EventIndexer {
         }
 
         console.log(`[Indexer] Backfilling from block ${lastBlock + 1n} to ${currentBlock}`);
-
         let fromBlock = lastBlock + 1n;
 
         while (fromBlock <= currentBlock && this.isRunning) {
@@ -108,7 +97,7 @@ export class EventIndexer {
             onLogs: async (logs) => {
                 for (const log of logs) {
                     try {
-                        await processEvent({
+                        await this.processor.process({
                             eventName: log.eventName,
                             args: log.args as Record<string, unknown>,
                             log: log as unknown as Log,
@@ -138,13 +127,13 @@ export class EventIndexer {
                 topics: log.topics,
             });
 
-            await processEvent({
+            await this.processor.process({
                 eventName: decoded.eventName,
                 args: decoded.args as Record<string, unknown>,
                 log,
-            });
+            } as DecodedEvent);
         } catch {
-            // Skip logs that don't match our ABI (e.g. Transfer events from qToken)
+            // Skip logs that don't match our ABI
         }
     }
 }
