@@ -8,107 +8,66 @@ const features = [
     icon: TrendingUp,
     iconColor: "text-[#42e695]",
     iconBg: "bg-[#42e695]/10",
-    title: "Supply → Earn",
+    label: "Supply",
     headline: "Put idle crypto to work",
     description:
-      "Deposit USDC, WETH, or WBTC and immediately start earning algorithmic interest. No lock-up periods. No minimum amounts. Withdraw any time.",
-    highlights: [
-      "Interest accrues every block",
-      "Receive yield-bearing qTokens",
-      "No minimum deposit",
-    ],
+      "Deposit USDC, WETH, or WBTC and earn algorithmic interest every block. No lock-up periods. Withdraw any time.",
   },
   {
     icon: CreditCard,
     iconColor: "text-[#00C6FF]",
     iconBg: "bg-[#00C6FF]/10",
-    title: "Borrow → Spend",
+    label: "Borrow",
     headline: "Unlock liquidity without selling",
     description:
-      "Use your ETH or BTC as collateral to borrow stablecoins. Keep your long exposure while accessing cash — pay back whenever you're ready.",
-    highlights: [
-      "Over-collateralised, non-custodial",
-      "Rates driven by market utilization",
-      "One unified health score",
-    ],
+      "Use your crypto as collateral to borrow stablecoins. Keep your long exposure while accessing cash.",
   },
   {
     icon: ShieldCheck,
     iconColor: "text-[#FFB800]",
     iconBg: "bg-[#FFB800]/10",
-    title: "Safe → Audited",
-    headline: "Risk you can see and control",
+    label: "Risk",
+    headline: "See your risk before you sign",
     description:
-      "QuickLend shows you exactly how each transaction changes your risk profile — before you sign. Audited smart contracts with no admin keys.",
-    highlights: [
-      "Real-time health factor preview",
-      "Audited by independent researchers",
-      "No admin keys or upgradeable proxies",
-    ],
+      "QuickLend previews how each transaction changes your health factor in real-time. Audited contracts, no admin keys.",
   },
 ];
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="py-24 px-4">
+    <section id="features" className="py-20 px-4">
       <div className="max-w-5xl mx-auto">
-        {/* Section header */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
-          <p className="text-sm uppercase tracking-widest text-[#00C6FF] mb-3 font-medium">
-            What you can do
-          </p>
-          <h2 className="text-4xl sm:text-5xl font-bold text-white">
-            Three things. Done right.
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
+            Everything you need. Nothing you don&apos;t.
           </h2>
         </motion.div>
 
-        {/* Feature cards */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-5">
           {features.map((f, i) => (
             <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 32 }}
+              key={f.label}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.12, duration: 0.55 }}
-              className="glass-panel rounded-2xl p-7 flex flex-col gap-5 hover:border-white/15 transition-colors"
+              transition={{ delay: i * 0.1, duration: 0.5 }}
+              className="border border-white/10 rounded-2xl p-6 flex flex-col gap-4 bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
             >
-              {/* Icon */}
-              <div
-                className={`w-12 h-12 rounded-xl ${f.iconBg} flex items-center justify-center`}
-              >
-                <f.icon size={24} className={f.iconColor} />
+              <div className={`w-10 h-10 rounded-xl ${f.iconBg} flex items-center justify-center`}>
+                <f.icon size={20} className={f.iconColor} />
               </div>
-
-              {/* Label + headline */}
               <div>
-                <span className={`text-xs font-semibold uppercase tracking-widest ${f.iconColor}`}>
-                  {f.title}
-                </span>
-                <h3 className="text-xl font-bold text-white mt-1">
-                  {f.headline}
-                </h3>
+                <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${f.iconColor}`}>
+                  {f.label}
+                </p>
+                <h3 className="text-lg font-bold text-white">{f.headline}</h3>
               </div>
-
-              {/* Description */}
-              <p className="text-gray-400 text-sm leading-relaxed">
-                {f.description}
-              </p>
-
-              {/* Highlights */}
-              <ul className="space-y-2 mt-auto">
-                {f.highlights.map((h) => (
-                  <li key={h} className="flex items-center gap-2 text-sm text-gray-300">
-                    <span className={`w-1.5 h-1.5 rounded-full ${f.iconBg} ${f.iconColor} flex-shrink-0`} />
-                    {h}
-                  </li>
-                ))}
-              </ul>
+              <p className="text-sm text-gray-400 leading-relaxed">{f.description}</p>
             </motion.div>
           ))}
         </div>

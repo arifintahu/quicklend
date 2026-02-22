@@ -1,84 +1,71 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Zap, Shield, TrendingUp } from "lucide-react";
+import { ArrowRight, Shield, Zap, TrendingUp } from "lucide-react";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-function fadeUp(delay: number) {
-  return {
-    initial: { opacity: 0, y: 32 },
-    animate: { opacity: 1, y: 0 },
-    transition: { delay, duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
-  } as const;
-}
-
 const badges = [
-  { icon: Shield, label: "Audited Contracts", color: "text-[#42e695]" },
-  { icon: Zap, label: "Instant Execution", color: "text-[#00C6FF]" },
-  { icon: TrendingUp, label: "Real-Time Risk Preview", color: "text-[#FFB800]" },
+  { icon: Shield, label: "Audited", color: "text-[#42e695]" },
+  { icon: Zap, label: "Non-custodial", color: "text-[#00C6FF]" },
+  { icon: TrendingUp, label: "Real-time risk", color: "text-[#FFB800]" },
 ];
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-24 pb-16 overflow-hidden">
-      {/* Ambient orbs */}
-      <div
-        className="orb w-[600px] h-[600px] bg-[#0072FF] top-[-100px] left-[-200px]"
-        aria-hidden
-      />
-      <div
-        className="orb w-[500px] h-[500px] bg-[#42e695] bottom-[-100px] right-[-150px]"
-        aria-hidden
-      />
-
-      <div className="relative z-10 max-w-5xl mx-auto text-center">
-        {/* Pill label */}
+    <section className="flex flex-col items-center justify-center px-4 pt-32 pb-20">
+      <div className="max-w-4xl mx-auto text-center">
+        {/* Pill */}
         <motion.div
-          {...fadeUp(0)}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-panel text-sm text-gray-300 mb-8"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-sm text-gray-400 mb-8"
         >
-          <span className="w-2 h-2 rounded-full bg-[#42e695] animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#42e695]" />
           Decentralised · Non-custodial · Open Source
         </motion.div>
 
         {/* Headline */}
         <motion.h1
-          {...fadeUp(0.12)}
-          className="text-5xl sm:text-6xl md:text-7xl font-bold leading-tight mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="text-5xl sm:text-6xl md:text-7xl font-bold leading-tight mb-6 text-white"
         >
-          <span className="text-gradient-hero">Supply and borrow tokens</span>
+          The open liquidity
           <br />
-          <span className="text-white">so seamlessly, even new</span>
-          <br />
-          <span className="text-white">crypto users feel right at home.</span>
+          <span className="text-gradient-primary">protocol.</span>
         </motion.h1>
 
-        {/* Sub-headline */}
+        {/* Subtext */}
         <motion.p
-          {...fadeUp(0.24)}
-          className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-10"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="text-lg text-gray-400 max-w-xl mx-auto mb-10"
         >
-          Deposit your crypto to earn algorithmic interest. Borrow against your
-          holdings without selling. See your risk in real-time — before you sign
-          anything.
+          Supply assets to earn yield. Borrow against your holdings without
+          selling. Non-custodial and permissionless.
         </motion.p>
 
-        {/* CTA buttons */}
+        {/* CTAs */}
         <motion.div
-          {...fadeUp(0.36)}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14"
         >
           <a
             href={APP_URL}
-            className="btn-primary inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-base"
+            className="btn-primary inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold"
           >
-            Start Earning
-            <ArrowRight size={18} />
+            Launch App
+            <ArrowRight size={16} />
           </a>
           <a
             href="#how-it-works"
-            className="btn-secondary inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-base"
+            className="btn-secondary inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm"
           >
             How it works
           </a>
@@ -86,31 +73,19 @@ export default function HeroSection() {
 
         {/* Trust badges */}
         <motion.div
-          {...fadeUp(0.48)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.45, duration: 0.5 }}
           className="flex flex-wrap items-center justify-center gap-6"
         >
           {badges.map(({ icon: Icon, label, color }) => (
-            <div
-              key={label}
-              className="flex items-center gap-2 text-sm text-gray-400"
-            >
-              <Icon size={16} className={color} />
+            <div key={label} className="flex items-center gap-1.5 text-sm text-gray-500">
+              <Icon size={14} className={color} />
               {label}
             </div>
           ))}
         </motion.div>
       </div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-gray-600 text-xs"
-      >
-        <div className="w-px h-8 bg-gradient-to-b from-transparent to-gray-600" />
-        scroll
-      </motion.div>
     </section>
   );
 }
