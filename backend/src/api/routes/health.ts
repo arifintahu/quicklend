@@ -1,28 +1,9 @@
-import { FastifyPluginAsync } from 'fastify';
+import type { IServiceFactory } from '../../services/interfaces/IServiceFactory.js';
+import { HealthRouteFactory } from '../factories/HealthRouteFactory.js';
 
-export const healthRoutes: FastifyPluginAsync = async (fastify) => {
-    fastify.get('/', {
-        schema: {
-            tags: ['Health'],
-            summary: 'Health check endpoint',
-            response: {
-                200: {
-                    type: 'object',
-                    properties: {
-                        status: { type: 'string' },
-                        timestamp: { type: 'string' },
-                        uptime: { type: 'number' },
-                        version: { type: 'string' },
-                    },
-                },
-            },
-        },
-    }, async (request, reply) => {
-        return {
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime(),
-            version: '1.0.0',
-        };
-    });
-};
+export function buildHealthRoutes(serviceFactory: IServiceFactory) {
+    return new HealthRouteFactory(serviceFactory).createPlugin();
+}
+
+// Backward-compatible named export consumed by index.ts
+export { buildHealthRoutes as healthRoutes };
