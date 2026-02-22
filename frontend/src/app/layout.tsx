@@ -3,7 +3,10 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { Web3Provider } from "@/providers/Web3Provider";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import { ToastContainer } from "@/components/organisms/ToastContainer";
+import { BottomNav } from "@/components/organisms/BottomNav";
+import { ErrorBoundary } from "@/components/atoms/ErrorBoundary";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,14 +42,19 @@ export default function RootLayout({
         {/* Noise Texture Overlay */}
         <div className="fixed inset-0 opacity-[0.02] pointer-events-none z-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\'/%3E%3C/svg%3E")' }}></div>
 
-        <Web3Provider>
-          <ToastProvider>
-            <div className="relative z-10 flex min-h-screen">
-              {children}
-            </div>
-            <ToastContainer />
-          </ToastProvider>
-        </Web3Provider>
+        <ErrorBoundary>
+          <Web3Provider>
+            <SettingsProvider>
+              <ToastProvider>
+                <div className="relative z-10 flex min-h-screen pb-16 md:pb-0">
+                  {children}
+                </div>
+                <ToastContainer />
+                <BottomNav />
+              </ToastProvider>
+            </SettingsProvider>
+          </Web3Provider>
+        </ErrorBoundary>
       </body>
     </html>
   );

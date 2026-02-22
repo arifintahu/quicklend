@@ -22,8 +22,8 @@ test.describe('Markets Page', () => {
         await expect(searchInput).toHaveValue('test');
     });
 
-    test('shows filter button', async ({ page }) => {
-        await expect(page.getByText('Filter')).toBeVisible();
+    test('shows trust signal', async ({ page }) => {
+        await expect(page.getByText('Non-Custodial')).toBeVisible();
     });
 
     test('displays asset table headers when markets loaded', async ({ page }) => {
@@ -36,8 +36,9 @@ test.describe('Markets Page', () => {
     });
 
     test('shows dollar-formatted values in stat cards', async ({ page }) => {
-        // Stats cards should show $0.00 when no contracts configured
+        // Stats cards show $0.00 initially — wait for loading to finish
         const dollarValues = page.locator('text=/\\$[\\d,]+\\.\\d{2}/');
+        await expect(dollarValues.first()).toBeVisible({ timeout: 15000 });
         const count = await dollarValues.count();
         expect(count).toBeGreaterThanOrEqual(3); // At least 3 stat cards
     });

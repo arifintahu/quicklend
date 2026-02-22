@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { HealthDial } from '@/components/organisms/HealthDial';
@@ -12,16 +12,17 @@ import { GlassCard } from '@/components/atoms/GlassCard';
 import { Button } from '@/components/atoms/Button';
 import { Tooltip } from '@/components/atoms/Tooltip';
 import { TokenIcon } from '@/components/atoms/TokenIcon';
+import { Skeleton } from '@/components/atoms/Skeleton';
 import { useMarkets } from '@/hooks/useMarkets';
 import { useUserPositions } from '@/hooks/useUserPositions';
 import { useWallet } from '@/hooks/useWallet';
 import { useActionModal } from '@/hooks/useActionModal';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet } from 'lucide-react';
+import { Wallet, TrendingUp, Shield, Activity } from 'lucide-react';
 
 export default function Dashboard() {
-    const { markets } = useMarkets();
+    const { markets, isLoading: marketsLoading } = useMarkets();
     const { positions: userPositions, isConnected } = useUserPositions();
     const { openConnectModal } = useWallet();
     const {
@@ -34,13 +35,12 @@ export default function Dashboard() {
         getMaxAmount,
     } = useActionModal(markets, userPositions);
 
-    const [showWelcome, setShowWelcome] = useState(false);
-
-    useEffect(() => {
-        if (typeof window !== 'undefined' && !localStorage.getItem('quicklend_welcomed')) {
-            setShowWelcome(true);
+    const [showWelcome, setShowWelcome] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !localStorage.getItem('quicklend_welcomed');
         }
-    }, []);
+        return false;
+    });
 
     const handleCloseWelcome = () => {
         localStorage.setItem('quicklend_welcomed', '1');
@@ -72,9 +72,13 @@ export default function Dashboard() {
                         <div className="z-10 flex-1">
                             <h2 className="text-xl font-medium text-gray-300 mb-2">Protocol Health</h2>
                             <div className="flex items-end gap-4 mb-6">
-                                <span className="text-5xl font-mono font-bold text-white tracking-tighter">
-                                    {healthData.healthFactor > 100 ? '∞' : healthData.healthFactor.toFixed(2)}
-                                </span>
+                                {marketsLoading ? (
+                                    <Skeleton className="h-12 w-24" />
+                                ) : (
+                                    <span className="text-5xl font-mono font-bold text-white tracking-tighter">
+                                        {healthData.healthFactor > 100 ? '∞' : healthData.healthFactor.toFixed(2)}
+                                    </span>
+                                )}
                                 <span className="flex items-center text-sm text-gray-400 mb-2">
                                     Health Factor
                                     <Tooltip content="Your safety score. Above 1.0 means your loan is safe. Below 1.0 and your collateral can be seized by liquidators." />
@@ -88,7 +92,11 @@ export default function Dashboard() {
                                             Borrow Power Used
                                             <Tooltip content="What percentage of your maximum borrowing capacity you are currently using. 100% means you have reached your borrowing limit." />
                                         </span>
-                                        <span className="text-white font-mono">{formatPercentage(healthData.borrowPowerUsed)}</span>
+                                        {marketsLoading ? (
+                                            <Skeleton className="h-4 w-12" />
+                                        ) : (
+                                            <span className="text-white font-mono">{formatPercentage(healthData.borrowPowerUsed)}</span>
+                                        )}
                                     </div>
                                     <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                         <motion.div
@@ -98,6 +106,15 @@ export default function Dashboard() {
                                             className="h-full bg-gradient-to-r from-[#00C6FF] to-[#0072FF]"
                                         />
                                     </div>
+                                    {healthData.liquidationPrice !== undefined && healthData.totalDebtUSD > 0 && (
+                                        <div className="flex justify-between text-sm mt-2">
+                                            <span className="flex items-center text-gray-400">
+                                                Liquidation Price
+                                                <Tooltip content="The collateral price at which your positions become eligible for liquidation." />
+                                            </span>
+                                            <span className="font-mono text-[#FF4B4B]">{formatCurrency(healthData.liquidationPrice)}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -115,9 +132,13 @@ export default function Dashboard() {
                                 Net APY
                                 <Tooltip content="Annual Percentage Yield — your net return after subtracting borrow costs from supply earnings, applied to your equity." />
                             </div>
-                            <div className="text-4xl font-mono font-bold text-gradient-success w-fit">
-                                {formatPercentage(healthData.netAPY)}
-                            </div>
+                            {marketsLoading ? (
+                                <Skeleton className="h-10 w-24 mt-1" />
+                            ) : (
+                                <div className="text-4xl font-mono font-bold text-gradient-success w-fit">
+                                    {formatPercentage(healthData.netAPY)}
+                                </div>
+                            )}
                             <div className="text-xs text-gray-500 mt-2">Weighted average of your positions</div>
                         </GlassCard>
 
@@ -127,18 +148,26 @@ export default function Dashboard() {
                                     Collateral
                                     <Tooltip content="Total value of assets you have supplied and enabled as collateral for borrowing." />
                                 </div>
-                                <div className="text-lg font-mono font-bold text-white">
-                                    {formatCurrency(healthData.totalCollateralUSD)}
-                                </div>
+                                {marketsLoading ? (
+                                    <Skeleton className="h-6 w-20 mt-1" />
+                                ) : (
+                                    <div className="text-lg font-mono font-bold text-white">
+                                        {formatCurrency(healthData.totalCollateralUSD)}
+                                    </div>
+                                )}
                             </GlassCard>
                             <GlassCard className="flex flex-col justify-center">
                                 <div className="flex items-center text-gray-400 text-xs mb-1">
                                     Debt
                                     <Tooltip content="Total value of assets you have borrowed, which accrue interest over time." />
                                 </div>
-                                <div className="text-lg font-mono font-bold text-[#FFB800]">
-                                    {formatCurrency(healthData.totalDebtUSD)}
-                                </div>
+                                {marketsLoading ? (
+                                    <Skeleton className="h-6 w-20 mt-1" />
+                                ) : (
+                                    <div className="text-lg font-mono font-bold text-[#FFB800]">
+                                        {formatCurrency(healthData.totalDebtUSD)}
+                                    </div>
+                                )}
                             </GlassCard>
                         </div>
                     </div>
@@ -325,7 +354,7 @@ export default function Dashboard() {
                                                         <td className="p-4 text-right">
                                                             <Button
                                                                 size="sm"
-                                                                variant="danger"
+                                                                variant="warning"
                                                                 className="text-xs"
                                                                 onClick={() => setSelectedAsset({ asset: market, action: 'borrow' })}
                                                             >
@@ -365,6 +394,23 @@ export default function Dashboard() {
                             >
                                 Connect Wallet
                             </Button>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-10 max-w-lg mx-auto text-left">
+                                <div className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-xl border border-white/5">
+                                    <TrendingUp size={22} className="text-[#42e695]" />
+                                    <span className="text-sm font-medium text-white">Supply to Earn</span>
+                                    <span className="text-xs text-gray-500 text-center">Deposit assets and earn competitive APY automatically</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-xl border border-white/5">
+                                    <Shield size={22} className="text-[#00C6FF]" />
+                                    <span className="text-sm font-medium text-white">Borrow Safely</span>
+                                    <span className="text-xs text-gray-500 text-center">Use your crypto as collateral for over-collateralized loans</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-xl border border-white/5">
+                                    <Activity size={22} className="text-[#FFB800]" />
+                                    <span className="text-sm font-medium text-white">Health Tracking</span>
+                                    <span className="text-xs text-gray-500 text-center">Monitor your position health factor in real-time</span>
+                                </div>
+                            </div>
                         </GlassCard>
                     </motion.div>
                 )}

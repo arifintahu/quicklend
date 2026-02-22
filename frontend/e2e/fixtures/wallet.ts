@@ -177,8 +177,25 @@ function getAnvilRpcUrl(): string {
  */
 export const test = base.extend<{ walletPage: Page }>({
   walletPage: async ({ page }, use) => {
+    // In Docker, NEXT_PUBLIC_RPC_URL is baked in as http://localhost:8545 but
+    // the browser inside the e2e container cannot reach localhost:8545 (that's
+    // the e2e container itself, not Anvil). Intercept those requests in the
+    // Playwright Node.js context — which CAN reach anvil:8545 via Docker DNS —
+    // and proxy them transparently so wagmi's publicClient contract reads work.
+    if (process.env.E2E_BASE_URL) {
+      await page.route(/http:\/\/localhost:8545/, async (route) => {
+        const proxyUrl = route.request().url().replace('localhost:8545', 'anvil:8545');
+        const response = await route.fetch({ url: proxyUrl });
+        await route.fulfill({ response });
+      });
+    }
+
     const rpcUrl = getAnvilRpcUrl();
     await page.addInitScript({ content: createMockProviderScript(rpcUrl) });
+    // Dismiss the WelcomeModal so it does not block wallet interactions
+    await page.addInitScript(() => {
+      localStorage.setItem('quicklend_welcomed', '1');
+    });
     await use(page);
   },
 });

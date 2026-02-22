@@ -11,9 +11,9 @@ test.describe('Page Navigation', () => {
         await expect(page.getByText('Protocol Health')).toBeVisible();
     });
 
-    test('dashboard shows Core Assets section', async ({ page }) => {
+    test('dashboard shows connect wallet prompt when disconnected', async ({ page }) => {
         await page.goto('/');
-        await expect(page.getByText('Core Assets')).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Connect Your Wallet' })).toBeVisible();
     });
 
     test('dashboard shows Net APY card', async ({ page }) => {
@@ -23,8 +23,8 @@ test.describe('Page Navigation', () => {
 
     test('dashboard shows Collateral and Debt cards', async ({ page }) => {
         await page.goto('/');
-        await expect(page.locator('div').filter({ hasText: /^Collateral$/ })).toBeVisible();
-        await expect(page.locator('div').filter({ hasText: /^Debt$/ })).toBeVisible();
+        await expect(page.locator('div').filter({ hasText: /^Collateral$/ }).first()).toBeVisible();
+        await expect(page.locator('div').filter({ hasText: /^Debt$/ }).first()).toBeVisible();
     });
 
     test('navigates to portfolio page', async ({ page }) => {
@@ -79,6 +79,10 @@ test.describe('Sidebar Navigation', () => {
     });
 
     test('can navigate between pages using sidebar links', async ({ page }) => {
+        // Dismiss WelcomeModal so the sidebar links are not blocked by the overlay
+        await page.addInitScript(() => {
+            localStorage.setItem('quicklend_welcomed', '1');
+        });
         await page.goto('/');
 
         // Click Portfolio link if available

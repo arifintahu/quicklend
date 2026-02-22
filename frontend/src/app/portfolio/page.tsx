@@ -1,25 +1,34 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from '@/components/organisms/Sidebar';
 import { Navbar } from '@/components/organisms/Navbar';
 import { GlassCard } from '@/components/atoms/GlassCard';
 import { TokenIcon } from '@/components/atoms/TokenIcon';
 import { Tooltip } from '@/components/atoms/Tooltip';
+import { Button } from '@/components/atoms/Button';
 
 import { useMarkets } from '@/hooks/useMarkets';
 import { useUserPositions } from '@/hooks/useUserPositions';
 import { useLendingActions } from '@/hooks/useLendingActions';
 import { calculateHealthFactor } from '@/lib/calculations';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
-import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Clock, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TrendingUp, TrendingDown, Clock, Loader2, AlertTriangle, ArrowRight } from 'lucide-react';
+
+interface ConfirmToggle {
+  assetAddress: `0x${string}`;
+  currentValue: boolean;
+  symbol: string;
+}
 
 export default function PortfolioPage() {
   const { markets } = useMarkets();
-  const { userPositions, isLoading } = useUserPositions();
+  const { userPositions } = useUserPositions();
   const { setCollateral, isPending } = useLendingActions();
   const healthData = calculateHealthFactor(markets, userPositions);
+
+  const [confirmToggle, setConfirmToggle] = useState<ConfirmToggle | null>(null);
 
   // Filter Positions
   const suppliedAssets = userPositions.filter(p => p.suppliedAmount > 0);
@@ -29,9 +38,41 @@ export default function PortfolioPage() {
   const netWorth = healthData.totalCollateralUSD - healthData.totalDebtUSD;
   const dailyEarnings = netWorth > 0 ? (netWorth * healthData.netAPY) / 365 : 0;
 
-  const handleToggleCollateral = (assetAddress: `0x${string}`, currentValue: boolean) => {
-    setCollateral(assetAddress, !currentValue);
+  const handleToggleCollateral = (assetAddress: `0x${string}`, currentValue: boolean, symbol: string) => {
+    if (currentValue) {
+      // Disabling collateral — show confirmation dialog
+      setConfirmToggle({ assetAddress, currentValue, symbol });
+    } else {
+      // Enabling collateral — safe, proceed directly
+      setCollateral(assetAddress, true);
+    }
   };
+
+  const handleConfirmToggle = () => {
+    if (!confirmToggle) return;
+    setCollateral(confirmToggle.assetAddress, false);
+    setConfirmToggle(null);
+  };
+
+  // Project HF after removing collateral
+  const projectedHFAfterDisable = confirmToggle
+    ? calculateHealthFactor(
+        markets,
+        userPositions.map(p =>
+          p.asset === confirmToggle.assetAddress
+            ? { ...p, isCollateral: false }
+            : p
+        )
+      ).healthFactor
+    : healthData.healthFactor;
+
+  const getHealthColor = (hf: number) => {
+    if (hf < 1.1) return 'text-[#FF4B4B]';
+    if (hf < 1.5) return 'text-[#FFB800]';
+    return 'text-[#00FF41]';
+  };
+
+  const formatHF = (hf: number) => (hf > 100 ? '∞' : hf.toFixed(2));
 
   return (
     <>
@@ -117,7 +158,7 @@ export default function PortfolioPage() {
                         </td>
                         <td className="p-4 text-center">
                           <button
-                            onClick={() => handleToggleCollateral(pos.asset, pos.isCollateral)}
+                            onClick={() => handleToggleCollateral(pos.asset, pos.isCollateral, pos.symbol)}
                             disabled={isPending}
                             className="relative inline-flex items-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             title={pos.isCollateral ? 'Disable collateral' : 'Enable collateral'}
@@ -195,6 +236,78 @@ export default function PortfolioPage() {
           </motion.div>
         </div>
       </main>
+
+      {/* Collateral Toggle Confirmation Dialog */}
+      <AnimatePresence>
+        {confirmToggle && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            role="dialog"
+            aria-modal="true"
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+            >
+              <GlassCard className="w-full max-w-sm border border-[#FFB800]/20 glass-panel-strong space-y-4">
+                <h3 className="text-lg font-bold text-white">
+                  Disable {confirmToggle.symbol} as Collateral?
+                </h3>
+
+                <div className="bg-white/5 rounded-xl p-3 border border-white/5 space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Health Factor</span>
+                    <div className="flex items-center gap-2 font-mono font-bold">
+                      <span className={getHealthColor(healthData.healthFactor)}>
+                        {formatHF(healthData.healthFactor)}
+                      </span>
+                      <ArrowRight size={14} className="text-gray-500" />
+                      <span className={getHealthColor(projectedHFAfterDisable)}>
+                        {formatHF(projectedHFAfterDisable)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {projectedHFAfterDisable < 1.5 && projectedHFAfterDisable >= 1.0 && (
+                  <div className="flex items-start gap-2 bg-[#FFB800]/10 border border-[#FFB800]/20 rounded-xl p-3 text-sm text-[#FFB800]">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>This will reduce your Health Factor. Consider repaying debt first.</span>
+                  </div>
+                )}
+                {projectedHFAfterDisable < 1.0 && (
+                  <div className="flex items-start gap-2 bg-[#FF4B4B]/10 border border-[#FF4B4B]/20 rounded-xl p-3 text-sm text-[#FF4B4B]">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>Cannot disable: would bring Health Factor below 1.0, risking liquidation.</span>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="ghost"
+                    fullWidth
+                    onClick={() => setConfirmToggle(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="warning"
+                    fullWidth
+                    onClick={handleConfirmToggle}
+                    disabled={projectedHFAfterDisable < 1.0}
+                  >
+                    Confirm
+                  </Button>
+                </div>
+              </GlassCard>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

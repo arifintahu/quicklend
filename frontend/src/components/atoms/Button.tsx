@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { motion, HTMLMotionProps } from 'framer-motion';
 
 interface ButtonProps extends HTMLMotionProps<"button"> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'warning';
   size?: 'sm' | 'md' | 'lg';
   fullWidth?: boolean;
 }
@@ -21,6 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
     secondary: 'bg-gradient-to-r from-[#42e695] to-[#3bb2b8] text-black font-semibold hover:shadow-[0_6px_20px_rgba(66,230,149,0.3)]',
     danger: 'bg-gradient-to-r from-[#FF4B4B] to-[#FF416C] text-white hover:shadow-[0_6px_20px_rgba(255,75,75,0.3)]',
     ghost: 'bg-white/5 text-[#00C6FF] hover:bg-white/10 border border-white/10 backdrop-blur-md',
+    warning: 'bg-gradient-to-r from-[#FFB800] to-[#FF8C00] text-white shadow-[0_4px_15px_rgba(255,184,0,0.3)] hover:shadow-[0_6px_20px_rgba(255,184,0,0.4)]',
   };
 
   const sizes = {
