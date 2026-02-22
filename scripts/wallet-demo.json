@@ -80,6 +80,20 @@
       ],
       "supplies": [],
       "borrows": []
+    },
+    {
+      "name": "E2E Test Account (Anvil #0)",
+      "privateKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+      "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "minting": [
+        { "token": "USDC", "amount": "1000000000000" },
+        { "token": "WETH", "amount": "100000000000000000000" },
+        { "token": "WBTC", "amount": "1000000000" }
+      ],
+      "supplies": [
+        { "token": "WETH", "amount": "5000000000000000000" }
+      ],
+      "borrows": []
     }
   ]
 }
